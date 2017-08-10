@@ -274,12 +274,15 @@ nw_connect_cb(void *arg)
     espconn_regist_recvcb(p_nwconn, nw_recv_cb);
     espconn_regist_sentcb(p_nwconn, nw_sent_cb);
     uint16_t voltage = system_get_vdd33();
+    DBG("volt%d\n", voltage);
     
 //     os_sprintf( json, "{\"temperature\": \"%d\" }", 55 );
 //     os_sprintf( data, "POST %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", 
 //                          "/test", "192.168.1.107", os_strlen( json ), json );
     
-    os_sprintf( url, "/iot/gate?file=%s&1=%s&2=%s&3=%s&4=%s&5=%s&6=%s&7=%s&8=%s&9=%s&10=%s&11=%s&12=%s", FILE_RESULTS, rtcData.t, rtcData.h, rtcData.p, voltage, wifiConnectionDuration, rtcData.weatherReadingDuration, rtcData.previousSendDuration, rtcData.previousTotalDuration, rtcData.previousDisconnectDuration, rtcData.counterIterations, rtcData.originalResetReason, resetReason);
+    os_sprintf( url, "/iot/gate?file=%s&1=%f&2=%f&3=%f&4=%d&5=%d&6=%d&7=%d&8=%d&9=%d&10=%d&11=%d&12=%d", FILE_RESULTS, rtcData.t, rtcData.h, rtcData.p, voltage, wifiConnectionDuration, rtcData.weatherReadingDuration, rtcData.previousSendDuration,
+                rtcData.previousTotalDuration, rtcData.previousDisconnectDuration, rtcData.counterIterations, rtcData.originalResetReason, resetReason);
+    
     os_sprintf( data, "POST  HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", 
                          url, "192.168.1.107");
                 
@@ -297,7 +300,7 @@ nw_reconnect_cb(void *arg, int8_t errno)
 {
     struct espconn *p_nwconn = (struct espconn *)arg;
 
-    DBG("nw_reconnect_cb errno=%d\n", errno);
+    DBG("nw_reconnect_cb errno=%d, is server running?\n", errno);
 }
 
 /*
@@ -316,11 +319,18 @@ nw_disconnect_cb(void *arg)
     
 }
 
-//EVENT_STAMODE_CONNECTED - The ESP8266 has connected to the WiFi network as a station
-//EVENT_STAMODE_DISCONNECTED - The ESP8266 has been disconnected from the WiFi network
-//EVENT_STAMODE_AUTHMODE_CHANGE - The ESP8266 has a change in the authorisation mode
-//EVENT_STAMODE_GOT_IP - The ESP8266 has an assigned IP address
-//EVENT_STAMODE_DHCP_TIMEOUT - There was a timeout while trying to get an IP address via DHCP
+// EVENT_STAMODE_CONNECTED 0
+// EVENT_STAMODE_DISCONNECTED 1
+// EVENT_STAMODE_AUTHMODE_CHANGE 2
+// EVENT_STAMODE_GOT_IP 3
+// EVENT_STAMODE_DHCP_TIMEOUT 4
+// EVENT_SOFTAPMODE_STACONNECTED 5
+// EVENT_SOFTAPMODE_STADISCONNECTED 6
+// EVENT_SOFTAPMODE_PROBEREQRECVED 7
+// EVENT_OPMODE_CHANGED 8
+// EVENT_MAX 9
+
+
 
 //#define SLEEP_TIME 500
 #define SLEEP_TIME 5000
@@ -335,7 +345,7 @@ void wifi_callback( System_Event_t *evt )
     
     switch ( evt->event )
     {
-        case EVENT_STAMODE_CONNECTED:
+        /*0*/ case EVENT_STAMODE_CONNECTED:
         {
             os_printf("EVENT_STAMODE_CONNECTED connect to ssid %s, channel %d\n",
                         evt->event_info.connected.ssid,
@@ -368,7 +378,7 @@ void wifi_callback( System_Event_t *evt )
             break;
         }
 
-        case EVENT_STAMODE_GOT_IP:
+        /*3*/case EVENT_STAMODE_GOT_IP:
         {
             uint32_t wifi_end = system_get_time();
             wifiConnectionDuration = wifi_end - wifi_connect_start;
