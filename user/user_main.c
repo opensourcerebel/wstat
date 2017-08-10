@@ -30,6 +30,29 @@
 
 #include "user_interface.h"
 
+#define DEV_220
+
+#ifdef DEV_152
+#define IP_SUFFIX 152 //stadalone module3, snadalone 220
+#define HOSTNAMEST "espstationbat" //stadalone module3
+#define FILE_RESULTS "results152.txt"
+#define PRINT_TIMINGS false
+#endif
+
+#ifdef DEV_126
+#define IP_SUFFIX 126 //stadalone module3, snadalone 220
+#define HOSTNAMEST "espstationgreen" //stadalone module3
+#define FILE_RESULTS "results126.txt"
+#define PRINT_TIMINGS true
+#endif
+
+#ifdef DEV_220
+#define IP_SUFFIX 220 //stadalone module3, snadalone 220
+#define HOSTNAMEST "espstationtest" //stadalone module3
+#define FILE_RESULTS "results220.txt"
+#define PRINT_TIMINGS true
+#endif
+
 #define DO_NOT_REPEAT_T 0
 #define NO_ARG  NULL
 
@@ -242,17 +265,24 @@ LOCAL void ICACHE_FLASH_ATTR
 nw_connect_cb(void *arg)
 {
     struct espconn *p_nwconn = (struct espconn *)arg;
-    static char data[256];
-    static char json[256];
+    static char data[512];
+    static char url[256];
+//     static char json[256];
 
     DBG("nw_connect_cb\n");
 
     espconn_regist_recvcb(p_nwconn, nw_recv_cb);
     espconn_regist_sentcb(p_nwconn, nw_sent_cb);
+    uint16_t voltage = system_get_vdd33();
     
-    os_sprintf( json, "{\"temperature\": \"%d\" }", 55 );
-    os_sprintf( data, "POST %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", 
-                         "/test", "192.168.1.107", os_strlen( json ), json );
+//     os_sprintf( json, "{\"temperature\": \"%d\" }", 55 );
+//     os_sprintf( data, "POST %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", 
+//                          "/test", "192.168.1.107", os_strlen( json ), json );
+    
+    os_sprintf( url, "/iot/gate?file=%s&1=%s&2=%s&3=%s&4=%s&5=%s&6=%s&7=%s&8=%s&9=%s&10=%s&11=%s&12=%s", FILE_RESULTS, rtcData.t, rtcData.h, rtcData.p, voltage, wifiConnectionDuration, rtcData.weatherReadingDuration, rtcData.previousSendDuration, rtcData.previousTotalDuration, rtcData.previousDisconnectDuration, rtcData.counterIterations, rtcData.originalResetReason, resetReason);
+    os_sprintf( data, "POST  HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", 
+                         url, "192.168.1.107");
+                
     
     DBG("Sending: %s\n", data );
     espconn_sent(p_nwconn, data, os_strlen(data));
