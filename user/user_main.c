@@ -62,6 +62,7 @@ static esp_tcp conntcp;
 static struct ip_info ipconfig;
 LOCAL os_timer_t nw_close_timer;
 LOCAL os_timer_t fake_weather_timer;
+LOCAL os_timer_t wait3sec;
 #define DBG os_printf
 static uint32_t wakeup_start;
 static uint32_t wifi_connect_start;
@@ -255,6 +256,23 @@ nw_recv_cb(void *arg, char *data, unsigned short len)
     os_timer_arm(&nw_close_timer, 100, 0);
 }
 
+// static char* ftoa(float num, uint8_t decimals) {
+//   // float to string; no float support in esp8266 sdk printf
+//   // warning: limited to 15 chars & non-reentrant
+//   // e.g., dont use more than once per os_printf call
+//   static char* buf[16];
+//   int whole = num;
+//   int decimal = (num - whole) * power(10, decimals);
+//   if (decimal < 0) {
+//     // get rid of sign on decimal portion
+//     decimal -= 2 * decimal;
+//   }
+//   char* pattern[10]; // setup printf pattern for decimal portion
+//   os_sprintf(pattern, "%%d.%%0%dd", decimals);
+//   os_sprintf(buf, pattern, whole, decimal);
+//   return (char *)buf;
+// }
+
 /*
  * Connect callback. 
  * At this point, the connection to the remote server is established
@@ -266,7 +284,7 @@ nw_connect_cb(void *arg)
 {
     struct espconn *p_nwconn = (struct espconn *)arg;
     static char data[512];
-    static char url[256];
+    static char url[512];
 //     static char json[256];
 
     DBG("nw_connect_cb\n");
@@ -280,11 +298,11 @@ nw_connect_cb(void *arg)
 //     os_sprintf( data, "POST %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", 
 //                          "/test", "192.168.1.107", os_strlen( json ), json );
     
-    os_sprintf( url, "/iot/gate?file=%s&1=%f&2=%f&3=%f&4=%d&5=%d&6=%d&7=%d&8=%d&9=%d&10=%d&11=%d&12=%d", FILE_RESULTS, rtcData.t, rtcData.h, rtcData.p, voltage, wifiConnectionDuration, rtcData.weatherReadingDuration, rtcData.previousSendDuration,
+    os_sprintf( url, "/iot/gate?file=%s&1=%s&2=%s&3=%s&4=%d&5=%d&6=%d&7=%d&8=%d&9=%d&10=%d&11=%d&12=%d", FILE_RESULTS, "999", "999", "999", voltage, wifiConnectionDuration, rtcData.weatherReadingDuration, rtcData.previousSendDuration,
                 rtcData.previousTotalDuration, rtcData.previousDisconnectDuration, rtcData.counterIterations, rtcData.originalResetReason, resetReason);
     
-    os_sprintf( data, "POST  HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", 
-                         url, "192.168.1.107");
+    os_sprintf( data, "POST %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", 
+                         url, "192.168.1.107", os_strlen( "" ), "" );
                 
     
     DBG("Sending: %s\n", data );
@@ -427,9 +445,11 @@ fillPreviousSendDuration()
 
   if (rtcData.workingMode != MODE_READ && rtcData.workingMode != MODE_SEND)
   {
-    os_printf("Reseting mode %d to read", rtcData.workingMode);
+    os_printf("Reseting mode %d to read\n", rtcData.workingMode);
     rtcData.workingMode = MODE_READ;
   }
+  
+  os_printf("Working mode %d\n", rtcData.workingMode);
 }
 
 // enum	rst_reason	{
@@ -465,21 +485,10 @@ readData(void)
     os_timer_arm(&fake_weather_timer, WEATHER_READ_IN_MS, DO_NOT_REPEAT_T);
 }
 
-/******************************************************************************
- * FunctionName : user_init
- * Description  : entry of user application, init user function here
- * Parameters   : none
- * Returns      : none
-*******************************************************************************/
-void ICACHE_FLASH_ATTR
-user_init(void)
+LOCAL void ICACHE_FLASH_ATTR
+work(void)
 {
-    wakeup_start = system_get_time();
-    struct rst_info *rtc_info = system_get_rst_info();
-    resetReason = rtc_info->reason;
-    //rtc_info->exccause;
-    //os_printf("Server My SDK version:%s\n", system_get_sdk_version());
-    
+    os_printf( "+working\n" );
     static struct station_config config;
     
     //uart_div_modify( 0, UART_CLK_FREQ / ( 115200 ) );
@@ -505,6 +514,43 @@ user_init(void)
     else
     {
         readData();        
+    }
+}
+
+LOCAL void ICACHE_FLASH_ATTR
+initialWait(void * arg)
+{
+    os_printf( "\n+wait over+\n" );
+    work();
+}
+
+/******************************************************************************
+ * FunctionName : user_init
+ * Description  : entry of user application, init user function here
+ * Parameters   : none
+ * Returns      : none
+*******************************************************************************/
+void ICACHE_FLASH_ATTR
+user_init(void)
+{
+    
+    wakeup_start = system_get_time();
+    struct rst_info *rtc_info = system_get_rst_info();
+    resetReason = rtc_info->reason;
+    os_printf("Reset %d\n", resetReason);
+    
+    if(resetReason == 6)
+    {
+        os_printf( "\n+wait\n" );
+        os_timer_disarm(&wait3sec);
+        os_timer_setfn(&wait3sec, initialWait,  NO_ARG);
+        os_timer_arm(&wait3sec, 3000, DO_NOT_REPEAT_T);
+    }
+    //rtc_info->exccause;
+   
+    else{
+        os_printf( "\n+run\n" );
+        work();
     }
 }
 
