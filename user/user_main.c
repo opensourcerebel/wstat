@@ -318,6 +318,7 @@ nw_reconnect_cb(void *arg, int8_t errno)
 {
     struct espconn *p_nwconn = (struct espconn *)arg;
 
+    //TODO: Server down => log error and sleep
     DBG("nw_reconnect_cb errno=%d, is server running?\n", errno);
 }
 
@@ -386,12 +387,15 @@ void wifi_callback( System_Event_t *evt )
             rtcData.previousTotalDuration = currentTotalDuration;
             rtcData.previousDisconnectDuration = currentDisconnectDuration;
             rtcData.counterIterations = rtcData.counterIterations + 1;
-            
-            deep_sleep_set_option( WAKE_WITH_WIFI_AND_DEF_CAL );//TODO: count before rf cal!!!
+            system_rtc_mem_write(RTCMEMORYSTART, &rtcData, sizeof(rtcData));
             
             uint32_t wakup_end2 = system_get_time();
-            os_printf("e2eWi1 %d", wakup_end - wakeup_start);
-            os_printf("e2eWi2 %d", wakup_end2 - wakup_end);
+            DBG("e2eWiAttach %d ms\n", wifiConnectionDuration/1000);            
+            DBG("e2eWiSend %d ms\n", currentSendingDuration/1000);
+            DBG("e2eWiDisc %d ms\n", currentDisconnectDuration/1000);
+            DBG("e2eWiTot %d ms\n", currentTotalDuration/1000);
+            DBG("e2eWiWrite %d us\n", wakup_end2 - wakup_end);
+            deep_sleep_set_option( WAKE_WITH_WIFI_AND_DEF_CAL );//TODO: count before rf cal!!!
             system_deep_sleep( SLEEP_TIME * 1000 ); 
             break;
         }
@@ -466,13 +470,15 @@ fillPreviousSendDuration()
 LOCAL void ICACHE_FLASH_ATTR
 readComplete(void * arg)
 {    
+    uint32_t wakup_end = system_get_time();
     rtcData.workingMode = MODE_SEND;
-    rtcData.originalResetReason = resetReason;
+    rtcData.originalResetReason = resetReason;   
+    rtcData.weatherReadingDuration = wakup_end - wakeup_start;
+    
     system_rtc_mem_write(RTCMEMORYSTART, &rtcData, sizeof(rtcData));
+    DBG("e2eWe %d\n", rtcData.weatherReadingDuration / 1000);
     
     deep_sleep_set_option( WAKE_WITHOUT_WIFI );
-    uint32_t wakup_end = system_get_time();
-    os_printf("e2eWe %d", wakup_end - wakeup_start);
     system_deep_sleep( 1 ); 
 }
 
@@ -520,7 +526,7 @@ work(void)
 LOCAL void ICACHE_FLASH_ATTR
 initialWait(void * arg)
 {
-    os_printf( "\n+wait over+\n" );
+    os_printf( "\n+Initial wait over+\n" );
     work();
 }
 
@@ -541,7 +547,7 @@ user_init(void)
     
     if(resetReason == 6)
     {
-        os_printf( "\n+wait\n" );
+        os_printf( "\n+!Initial wait!\n" );
         os_timer_disarm(&wait3sec);
         os_timer_setfn(&wait3sec, initialWait,  NO_ARG);
         os_timer_arm(&wait3sec, 3000, DO_NOT_REPEAT_T);
@@ -549,7 +555,7 @@ user_init(void)
     //rtc_info->exccause;
    
     else{
-        os_printf( "\n+run\n" );
+        os_printf( "\n+runing\n" );
         work();
     }
 }
