@@ -309,6 +309,10 @@ nw_connect_cb(void *arg)
     espconn_sent(p_nwconn, data, os_strlen(data));
 }
 
+//#define SLEEP_TIME 500
+#define SLEEP_TIME 5000
+#define WAKE_WITH_WIFI_AND_DEF_CAL 0
+
 /*
  * Re-Connect callback. 
  * Do nothing?
@@ -319,7 +323,10 @@ nw_reconnect_cb(void *arg, int8_t errno)
     struct espconn *p_nwconn = (struct espconn *)arg;
 
     //TODO: Server down => log error and sleep
-    DBG("nw_reconnect_cb errno=%d, is server running?\n", errno);
+    DBG("nw_reconnect_cb errno=%d, is server running, retry?\n", errno);
+    
+    deep_sleep_set_option( WAKE_WITH_WIFI_AND_DEF_CAL );//TODO: count before rf cal!!!
+    system_deep_sleep( SLEEP_TIME * 1000 ); 
 }
 
 /*
@@ -351,9 +358,7 @@ nw_disconnect_cb(void *arg)
 
 
 
-//#define SLEEP_TIME 500
-#define SLEEP_TIME 5000
-#define WAKE_WITH_WIFI_AND_DEF_CAL 0
+
 #define WAKE_WITHOUT_WIFI 4
 #define RTCMEMORYSTART 64
 #define MODE_SEND 100
@@ -530,6 +535,10 @@ initialWait(void * arg)
     work();
 }
 
+#define WIFI_MODE_STATON 1
+#define WIFI_MODE_SOFT_AP 2
+#define WIFI_MODE_STATION_AND_SOFT_AP 3
+
 /******************************************************************************
  * FunctionName : user_init
  * Description  : entry of user application, init user function here
@@ -539,11 +548,19 @@ initialWait(void * arg)
 void ICACHE_FLASH_ATTR
 user_init(void)
 {
-    
     wakeup_start = system_get_time();
+    
+    uint8 currentOpMode = wifi_get_opmode_default();
+    os_printf("currentOpMode %d\n", currentOpMode);
+    if(currentOpMode != WIFI_MODE_STATON)
+    {
+        wifi_set_opmode(WIFI_MODE_STATON);
+    }
+    
     struct rst_info *rtc_info = system_get_rst_info();
     resetReason = rtc_info->reason;
     os_printf("Reset %d\n", resetReason);
+    
     
     if(resetReason == 6)
     {
