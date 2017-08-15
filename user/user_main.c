@@ -27,10 +27,11 @@
 #include "pass_router.h"
 #include "ip_addr.h"
 #include "espconn.h"
+#include "mem.h"
 
 #include "user_interface.h"
 
-#define DEV_220
+#define DEV_152
 
 #ifdef DEV_152
 #define IP_SUFFIX 152 //stadalone module3, snadalone 220
@@ -55,6 +56,13 @@
 
 #define DO_NOT_REPEAT_T 0
 #define NO_ARG  NULL
+
+#define WIFI_MODE_STATON 1
+#define WIFI_MODE_SOFT_AP 2
+#define WIFI_MODE_STATION_AND_SOFT_AP 3
+
+
+#define packet_size 2048
 
 //struct espconn dweet_conn;
 static struct espconn nwconn;
@@ -155,71 +163,6 @@ user_rf_pre_init(void)
 }
 
 
-
-// void data_received( void *arg, char *pdata, unsigned short len )
-// {
-//     struct espconn *conn = arg;
-//     
-//     os_printf( "%s: %s\n", __FUNCTION__, pdata );
-//     
-//     espconn_disconnect( conn );
-// }
-// 
-// 
-// void tcp_connected( void *arg )
-// {
-//     int temperature = 55;   // test data
-//     struct espconn *conn = arg;
-//     
-//     os_printf( "%s\n", __FUNCTION__ );
-//     espconn_regist_recvcb( conn, data_received );
-// 
-//     os_sprintf( json_data, "{\"temperature\": \"%d\" }", temperature );
-//     os_sprintf( buffer, "POST %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", 
-//                          dweet_path, dweet_host, os_strlen( json_data ), json_data );
-//     
-//     os_printf( "Sending: %s\n", buffer );
-//     espconn_sent( conn, buffer, os_strlen( buffer ) );
-// }
-// 
-// void tcp_disconnected( void *arg )
-// {
-//     struct espconn *conn = arg;
-//     
-//     os_printf( "%s\n", __FUNCTION__ );
-//     wifi_station_disconnect();
-// }
-// 
-// 
-// void dns_done( const char *name, ip_addr_t *ipaddr, void *arg )
-// {
-//     struct espconn *conn = arg;
-//     
-//     os_printf( "%s\n", __FUNCTION__ );
-//     
-//     if ( ipaddr == NULL) 
-//     {
-//         os_printf("DNS lookup failed\n");
-//         wifi_station_disconnect();
-//     }
-//     else
-//     {
-//         os_printf("Connecting...\n" );
-//         
-//         conn->type = ESPCONN_TCP;
-//         conn->state = ESPCONN_NONE;
-//         conn->proto.tcp=&dweet_tcp;
-//         conn->proto.tcp->local_port = espconn_port();
-//         conn->proto.tcp->remote_port = 80;
-//         os_memcpy( conn->proto.tcp->remote_ip, &ipaddr->addr, 4 );
-// 
-//         espconn_regist_connectcb( conn, tcp_connected );
-//         espconn_regist_disconcb( conn, tcp_disconnected );
-//         
-//         espconn_connect( conn );
-//     }
-// }
-
 LOCAL void ICACHE_FLASH_ATTR
 nw_close_cb(void * arg)
 {
@@ -235,7 +178,7 @@ nw_close_cb(void * arg)
 LOCAL void ICACHE_FLASH_ATTR
 nw_sent_cb(void *arg)
 {
-    struct espconn *p_nwconn = (struct espconn *)arg;
+    //struct espconn *p_nwconn = (struct espconn *)arg;
 
     DBG("nw_sent_cb\n");
 }
@@ -256,23 +199,6 @@ nw_recv_cb(void *arg, char *data, unsigned short len)
     os_timer_arm(&nw_close_timer, 100, 0);
 }
 
-// static char* ftoa(float num, uint8_t decimals) {
-//   // float to string; no float support in esp8266 sdk printf
-//   // warning: limited to 15 chars & non-reentrant
-//   // e.g., dont use more than once per os_printf call
-//   static char* buf[16];
-//   int whole = num;
-//   int decimal = (num - whole) * power(10, decimals);
-//   if (decimal < 0) {
-//     // get rid of sign on decimal portion
-//     decimal -= 2 * decimal;
-//   }
-//   char* pattern[10]; // setup printf pattern for decimal portion
-//   os_sprintf(pattern, "%%d.%%0%dd", decimals);
-//   os_sprintf(buf, pattern, whole, decimal);
-//   return (char *)buf;
-// }
-
 /*
  * Connect callback. 
  * At this point, the connection to the remote server is established
@@ -283,8 +209,11 @@ LOCAL void ICACHE_FLASH_ATTR
 nw_connect_cb(void *arg)
 {
     struct espconn *p_nwconn = (struct espconn *)arg;
-    static char data[512];
-    static char url[512];
+    
+    char *data = (char *)os_zalloc(packet_size);    
+    char *url = (char *)os_zalloc(packet_size);
+    //static char data[512];
+    //static char url[512];
 //     static char json[256];
 
     DBG("nw_connect_cb\n");
@@ -295,24 +224,26 @@ nw_connect_cb(void *arg)
     DBG("volt%d\n", voltage);
     
 //     os_sprintf( json, "{\"temperature\": \"%d\" }", 55 );
-//     os_sprintf( data, "POST %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", 
-//                          "/test", "192.168.1.107", os_strlen( json ), json );
+//     os_sprintf( data, "POST %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", "/test", "192.168.1.107", os_strlen( json ), json );
     
     os_sprintf( url, "/iot/gate?file=%s&1=%s&2=%s&3=%s&4=%d&5=%d&6=%d&7=%d&8=%d&9=%d&10=%d&11=%d&12=%d", FILE_RESULTS, "999", "999", "999", voltage, wifiConnectionDuration, rtcData.weatherReadingDuration, rtcData.previousSendDuration,
                 rtcData.previousTotalDuration, rtcData.previousDisconnectDuration, rtcData.counterIterations, rtcData.originalResetReason, resetReason);
     
-    os_sprintf( data, "POST %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", 
-                         url, "192.168.1.107", os_strlen( "" ), "" );
+//  os_sprintf( data, "POST %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", url, HOST_IP_ST, os_strlen( "" ), "" );
+    os_sprintf( data, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", url, HOST_NAME, os_strlen( "" ), "" );
                 
     
     DBG("Sending: %s\n", data );
-    espconn_sent(p_nwconn, data, os_strlen(data));
+    espconn_secure_sent(p_nwconn, data, os_strlen(data));
+    
+    os_free(data);
+    os_free(url);
 }
 
 //#define SLEEP_TIME 500
 #define SLEEP_TIME 5000
 #define WAKE_WITH_WIFI_AND_DEF_CAL 0
-
+#define WAKE_WITHOUT_WIFI 4
 /*
  * Re-Connect callback. 
  * Do nothing?
@@ -356,10 +287,6 @@ nw_disconnect_cb(void *arg)
 // EVENT_OPMODE_CHANGED 8
 // EVENT_MAX 9
 
-
-
-
-#define WAKE_WITHOUT_WIFI 4
 #define RTCMEMORYSTART 64
 #define MODE_SEND 100
 #define MODE_READ 200
@@ -400,14 +327,16 @@ void wifi_callback( System_Event_t *evt )
             DBG("e2eWiDisc %d ms\n", currentDisconnectDuration/1000);
             DBG("e2eWiTot %d ms\n", currentTotalDuration/1000);
             DBG("e2eWiWrite %d us\n", wakup_end2 - wakup_end);
-            deep_sleep_set_option( WAKE_WITH_WIFI_AND_DEF_CAL );//TODO: count before rf cal!!!
+            deep_sleep_set_option( WAKE_WITHOUT_WIFI );//TODO: count before rf cal!!!
             system_deep_sleep( SLEEP_TIME * 1000 ); 
             break;
         }
 
         /*3*/case EVENT_STAMODE_GOT_IP:
+        
         {
             uint32_t wifi_end = system_get_time();
+
             wifiConnectionDuration = wifi_end - wifi_connect_start;
             os_printf("EVENT_STAMODE_GOT_IP ip:" IPSTR ",mask:" IPSTR ",gw:" IPSTR,
                         IP2STR(&evt->event_info.got_ip.ip),
@@ -418,18 +347,22 @@ void wifi_callback( System_Event_t *evt )
             //TODO: change here to direct IP without DNS!
             //espconn_gethostbyname( &dweet_conn, dweet_host, &dweet_ip, dns_done );
             
-            const char thingspeak_ip[4] = {192, 168, 1, 107};
+            const char thingspeak_ip[4] = HOST_IP;
             nwconn.type = ESPCONN_TCP;
             nwconn.proto.tcp = &conntcp;
             os_memcpy(conntcp.remote_ip, thingspeak_ip, 4);
-            conntcp.remote_port = 8000;
+            conntcp.remote_port = 443;
             conntcp.local_port = espconn_port();
+            
+            
             espconn_regist_connectcb(&nwconn, nw_connect_cb);
             espconn_regist_disconcb(&nwconn, nw_disconnect_cb);
             espconn_regist_reconcb(&nwconn, nw_reconnect_cb);
             
             http_start = system_get_time();
-            espconn_connect(&nwconn);
+            //espconn_connect(&nwconn);
+            espconn_secure_set_size(ESPCONN_CLIENT,5120); 
+            espconn_secure_connect(&nwconn);
             
             break;
         }
@@ -483,8 +416,8 @@ readComplete(void * arg)
     system_rtc_mem_write(RTCMEMORYSTART, &rtcData, sizeof(rtcData));
     DBG("e2eWe %d\n", rtcData.weatherReadingDuration / 1000);
     
-    deep_sleep_set_option( WAKE_WITHOUT_WIFI );
-    system_deep_sleep( 1 ); 
+    deep_sleep_set_option( WAKE_WITH_WIFI_AND_DEF_CAL );
+    system_deep_sleep( 10 ); 
 }
 
 #define WEATHER_READ_IN_MS 110
@@ -515,12 +448,28 @@ work(void)
 
         gpio_init();
         
-        config.bssid_set = 0;
         os_memcpy( &config.ssid, ROUTER_NAME, 32 );
         os_memcpy( &config.password, ROUTER_PASS, 64 );
-        wifi_station_set_config( &config );
+        
+        config.bssid_set = 1;
+        
+        uint8 targetBssid[6] = ROUTER_BSSID;
+        memcpy((void *) &config.bssid[0], (void *) targetBssid, 6);
+        
+        wifi_set_channel(ROUTER_CHANNEL);
+        wifi_station_set_config_current( &config );
+        
+        //ip:192.168.0.108,mask:255.255.255.0,gw:192.168.0.1
+        struct ip_info info;
+        IP4_ADDR(&info.ip,192,168,1,IP_SUFFIX);
+        IP4_ADDR(&info.gw,192,168,1,1);
+        IP4_ADDR(&info.netmask,255,255,255,0);
+        wifi_set_ip_info(STATION_IF,&info);
         
         wifi_set_event_handler_cb( wifi_callback );
+        
+        DBG("Connect to wifi ...\n");
+        wifi_station_connect();        
     }
     else
     {
@@ -535,23 +484,12 @@ initialWait(void * arg)
     work();
 }
 
-#define WIFI_MODE_STATON 1
-#define WIFI_MODE_SOFT_AP 2
-#define WIFI_MODE_STATION_AND_SOFT_AP 3
-
-/******************************************************************************
- * FunctionName : user_init
- * Description  : entry of user application, init user function here
- * Parameters   : none
- * Returns      : none
-*******************************************************************************/
-void ICACHE_FLASH_ATTR
-user_init(void)
+LOCAL void ICACHE_FLASH_ATTR
+system_operational(void)
 {
-    wakeup_start = system_get_time();
-    
+    os_printf( "\n!system_operational\n" );
     uint8 currentOpMode = wifi_get_opmode_default();
-    os_printf("currentOpMode %d\n", currentOpMode);
+    //os_printf("currentOpMode %d\n", currentOpMode);
     if(currentOpMode != WIFI_MODE_STATON)
     {
         wifi_set_opmode(WIFI_MODE_STATON);
@@ -568,12 +506,31 @@ user_init(void)
         os_timer_disarm(&wait3sec);
         os_timer_setfn(&wait3sec, initialWait,  NO_ARG);
         os_timer_arm(&wait3sec, 3000, DO_NOT_REPEAT_T);
-    }
-    //rtc_info->exccause;
-   
-    else{
+    }     
+    else
+    {
         os_printf( "\n+runing\n" );
         work();
     }
+    
+}
+
+
+
+/******************************************************************************
+ * FunctionName : user_init
+ * Description  : entry of user application, init user function here
+ * Parameters   : none
+ * Returns      : none
+*******************************************************************************/
+void ICACHE_FLASH_ATTR
+user_init(void)
+{
+    wifi_station_set_auto_connect(0);//disable auto connect
+    wifi_station_dhcpc_stop();//disable dhcp
+    wakeup_start = system_get_time();
+    os_printf( "\nUSER_INIT+\n" );
+    
+    system_init_done_cb(system_operational);
 }
 
