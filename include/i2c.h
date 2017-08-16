@@ -29,7 +29,7 @@
 // SDA on GPIO2
 #define I2C_SDA_MUX PERIPHS_IO_MUX_GPIO2_U
 #define I2C_SDA_FUNC FUNC_GPIO2
-#define I2C_SDA_PIN 2
+#define I2C_SDA_PIN 4
 
 // SCK on GPIO14
 //#define I2C_SCK_MUX PERIPHS_IO_MUX_MTMS_U
@@ -38,7 +38,7 @@
 
 //SCK on GPIO0 (untested)
 #define I2C_SCK_MUX PERIPHS_IO_MUX_GPIO0_U
-#define I2C_SCK_PIN 0
+#define I2C_SCK_PIN 5
 #define I2C_SCK_FUNC FUNC_GPIO0
 
 #define i2c_read() GPIO_INPUT_GET(GPIO_ID_PIN(I2C_SDA_PIN)); 
