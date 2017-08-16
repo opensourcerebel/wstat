@@ -28,6 +28,7 @@
 #include "ip_addr.h"
 #include "espconn.h"
 #include "mem.h"
+#include "i2c_bme280.h"
 
 #include "user_interface.h"
 
@@ -424,9 +425,27 @@ readComplete(void * arg)
 LOCAL void ICACHE_FLASH_ATTR
 readData(void)
 {
-    os_timer_disarm(&fake_weather_timer);
-    os_timer_setfn(&fake_weather_timer, readComplete,  NO_ARG);
-    os_timer_arm(&fake_weather_timer, WEATHER_READ_IN_MS, DO_NOT_REPEAT_T);
+//     os_timer_disarm(&fake_weather_timer);
+//     os_timer_setfn(&fake_weather_timer, readComplete,  NO_ARG);
+//     os_timer_arm(&fake_weather_timer, WEATHER_READ_IN_MS, DO_NOT_REPEAT_T);
+    
+     if (BME280_Init(BME280_MODE_FORCED) ) {
+     BME280_readSensorData();
+
+    signed long int temp;
+    temp = BME280_GetTemperature();
+    unsigned long int press;
+    press = BME280_GetPressure();
+    unsigned long int hum;
+    hum = BME280_GetHumidity();
+
+    ets_uart_printf("Temp: %d.%d DegC, ", (int)(temp/100), (int)(temp%100));
+    ets_uart_printf("Pres: %d.%d hPa, ", (int)(press/100), (int)(press%100));
+    ets_uart_printf("Hum: %d.%d pct \r\n", (int)(hum/1024), (int)(hum%1024));
+    
+    }else{
+        ets_uart_printf("BME280 init error.\r\n");
+    }
 }
 
 LOCAL void ICACHE_FLASH_ATTR
