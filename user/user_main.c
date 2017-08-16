@@ -47,7 +47,7 @@
 #define HOSTNAMEST "espstationgreen" //stadalone module3
 #define FILE_RESULTS "results126.txt"
 #define PRINT_TIMINGS true
-#define CORRECTION 211 //3539-3328
+#define CORRECTION -357 //3328 2751
 #endif
 
 #ifdef DEV_220
@@ -64,6 +64,9 @@
 #define WIFI_MODE_SOFT_AP 2
 #define WIFI_MODE_STATION_AND_SOFT_AP 3
 
+#define RTCMEMORYSTART 64
+#define MODE_SEND 100
+#define MODE_READ 200
 
 #define packet_size 2048
 
@@ -276,7 +279,6 @@ nw_disconnect_cb(void *arg)
     DBG("nw_disconnect_cb\n");
     wifi_disconnect_start = system_get_time();
     wifi_station_disconnect();
-    
 }
 
 // EVENT_STAMODE_CONNECTED 0
@@ -290,9 +292,6 @@ nw_disconnect_cb(void *arg)
 // EVENT_OPMODE_CHANGED 8
 // EVENT_MAX 9
 
-#define RTCMEMORYSTART 64
-#define MODE_SEND 100
-#define MODE_READ 200
 void wifi_callback( System_Event_t *evt )
 {
     DBG( "here: %s: %d\n", __FUNCTION__, evt->event );
