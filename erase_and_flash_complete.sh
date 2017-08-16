@@ -1,7 +1,7 @@
 #!/bin/bash
 set -x
 binpth=../bin
-usbpth=ttyACM0
+usbpth=ttyUSB0
 speed=115200
 
 esptool.py --port /dev/$usbpth --baud $speed erase_flash

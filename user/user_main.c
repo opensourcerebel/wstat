@@ -32,7 +32,7 @@
 
 #include "user_interface.h"
 
-#define DEV_152
+#define DEV_126
 
 #ifdef DEV_152
 #define IP_SUFFIX 152 //stadalone module3, snadalone 220
@@ -47,6 +47,7 @@
 #define HOSTNAMEST "espstationgreen" //stadalone module3
 #define FILE_RESULTS "results126.txt"
 #define PRINT_TIMINGS true
+#define CORRECTION 211 //3539-3328
 #endif
 
 #ifdef DEV_220
@@ -73,7 +74,7 @@ LOCAL os_timer_t nw_close_timer;
 LOCAL os_timer_t fake_weather_timer;
 LOCAL os_timer_t wait3sec;
 
-#define PROD_COMPILE
+#define DEV_COMPILE
 
 #ifdef DEV_COMPILE
 #define DBG os_printf
@@ -412,34 +413,33 @@ LOCAL void ICACHE_FLASH_ATTR
 readData(void)
 {
     
-  if (BME280_Init(BME280_MODE_FORCED) ) 
-  {
-    BME280_readSensorData();
+    if (BME280_Init(BME280_MODE_FORCED) ) 
+    {
+        BME280_readSensorData();
 
-    rtcData.t = BME280_GetTemperature();
-    rtcData.p = BME280_GetPressure();
-    rtcData.h = BME280_GetHumidity();
+        rtcData.t = BME280_GetTemperature();
+        rtcData.p = BME280_GetPressure();
+        rtcData.h = BME280_GetHumidity();
 
-//     DBG("Temp: %d.%d DegC, ", (int)(rtcData.t/100), (int)(rtcData.t%100));
-//     DBG("Pres: %d.%d hPa, ", (int)(rtcData.p/100), (int)(rtcData.p%100));
-//     DBG("Hum: %d.%d pct \r\n", (int)(rtcData.h/1024), (int)(rtcData.h%1024));
-    
+        //     DBG("Temp: %d.%d DegC, ", (int)(rtcData.t/100), (int)(rtcData.t%100));
+        //     DBG("Pres: %d.%d hPa, ", (int)(rtcData.p/100), (int)(rtcData.p%100));
+        //     DBG("Hum: %d.%d pct \r\n", (int)(rtcData.h/1024), (int)(rtcData.h%1024));
+    }
+    else
+    {
+        DBG("BME280 init error.\r\n");
+    }
+  
     uint32_t wakup_end = system_get_time();
     rtcData.workingMode = MODE_SEND;
     rtcData.originalResetReason = resetReason;   
     rtcData.weatherReadingDuration = wakup_end - wakeup_start;
-    
+
     system_rtc_mem_write(RTCMEMORYSTART, &rtcData, sizeof(rtcData));
     DBG_TIME("e2eWe %d\n", rtcData.weatherReadingDuration / 1000);
-    
+
     deep_sleep_set_option( WAKE_WITH_WIFI_AND_DEF_CAL );
     DEEP_SLEEP( 10 ); 
-    
-  }
-  else
-  {
-    DBG("BME280 init error.\r\n");
-  }
 }
 
 LOCAL void ICACHE_FLASH_ATTR 
@@ -454,21 +454,19 @@ work(void)
     { 
         wifi_connect_start = system_get_time();
         
-        wifi_station_set_hostname( "TestSleep" );
+        //wifi_station_set_hostname( "TestSleep" );
         
         //gpio_init();
         
-        os_memcpy( &config.ssid, ROUTER_NAME, 32 );
-        
+        os_memcpy( &config.ssid, ROUTER_NAME, 32 );        
         os_memcpy( &config.password, ROUTER_PASS, 64 );
         
         config.bssid_set = 1;
         
-        uint8 targetBssid[6] = ROUTER_BSSID;
-        
+        uint8 targetBssid[6] = ROUTER_BSSID;        
         memcpy((void *) &config.bssid[0], (void *) targetBssid, 6);
         
-        wifi_set_channel(ROUTER_CHANNEL);
+        wifi_set_channel(ROUTER_CHANNEL);//does not write to flash
          
         wifi_station_set_config_current( &config );
         
@@ -477,7 +475,7 @@ work(void)
         IP4_ADDR(&info.ip,192,168,1,IP_SUFFIX);
         IP4_ADDR(&info.gw,192,168,1,1);
         IP4_ADDR(&info.netmask,255,255,255,0);
-        wifi_set_ip_info(STATION_IF,&info);
+        wifi_set_ip_info(STATION_IF,&info);//does not write to flash
         
         wifi_set_event_handler_cb( wifi_callback );
         uint32_t config_end = system_get_time();
