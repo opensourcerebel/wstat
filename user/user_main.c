@@ -352,7 +352,7 @@ void sendData()
             
             os_timer_disarm(&sendDataTmr);
             os_timer_setfn(&sendDataTmr, sendData,  NO_ARG);
-            os_timer_arm(&sendDataTmr, 100, DO_NOT_REPEAT_T);
+            os_timer_arm(&sendDataTmr, 100, DO_NOT_REPEAT_T); 
         }
     }
 }
