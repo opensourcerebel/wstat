@@ -32,34 +32,30 @@
 
 #include "user_interface.h"
 
-#define DEV_126
+#define DEV_210
 
 #ifdef DEV_152
-#define IP_SUFFIX 152 //stadalone module3, snadalone 220
-#define HOSTNAMEST "espstationbat" //stadalone module3
+#define IP_SUFFIX 152 
 #define FILE_RESULTS "results152.txt"
-#define PRINT_TIMINGS false
 #define CORRECTION 211 //3539-3328
 #endif
 
 #ifdef DEV_126
-#define IP_SUFFIX 126 //stadalone module3, snadalone 220
-#define HOSTNAMEST "espstationgreen" //stadalone module3
+#define IP_SUFFIX 126 
 #define FILE_RESULTS "results126.txt"
-#define PRINT_TIMINGS true
 #define CORRECTION -357 //3328 2751
 #endif
 
-#ifdef DEV_220
-#define IP_SUFFIX 220 //stadalone module3, snadalone 220
-#define HOSTNAMEST "espstationtest" //stadalone module3
-#define FILE_RESULTS "results220.txt"
-#define PRINT_TIMINGS true
+#ifdef DEV_210
+#define IP_SUFFIX 210
+#define FILE_RESULTS "results210.txt"
+#define CORRECTION -357 //3328 2751
 #endif
 
 #define DO_NOT_REPEAT_T 0
 #define NO_ARG  NULL
 
+#define DESIRED_WIFI_MODE WIFI_MODE_STATON
 #define WIFI_MODE_STATON 1
 #define WIFI_MODE_SOFT_AP 2
 #define WIFI_MODE_STATION_AND_SOFT_AP 3
@@ -69,13 +65,6 @@
 #define MODE_READ 200
 
 #define packet_size 2048
-
-static struct espconn nwconn;
-static esp_tcp conntcp;
-static struct ip_info ipconfig;
-LOCAL os_timer_t nw_close_timer;
-LOCAL os_timer_t fake_weather_timer;
-LOCAL os_timer_t wait3sec;
 
 #define DEV_COMPILE
 
@@ -90,6 +79,23 @@ LOCAL os_timer_t wait3sec;
 #define DBG_TIME 
 #define DEEP_SLEEP system_deep_sleep_instant
 #endif
+
+#define SLEEP_TIME 500
+#define DESIRED_WIFI_WAKE_MODE WAKE_WITH_WIFI_AND_DEF_CAL
+#define WAKE_WITH_WIFI_AND_DEF_CAL 0
+#define WAKE_WITH_WIFI_NO_CAL 2
+#define WAKE_WITHOUT_WIFI 4
+
+static struct espconn nwconn;
+static esp_tcp conntcp;
+static struct ip_info ipconfig;
+LOCAL os_timer_t nw_close_timer;
+LOCAL os_timer_t fake_weather_timer;
+LOCAL os_timer_t wait3sec;
+LOCAL os_timer_t sleepAfterSendTmr;
+LOCAL os_timer_t sleepAfterReadTmr;
+LOCAL os_timer_t sendDataTmr;
+
 static uint32_t wakeup_start;
 static uint32_t wifi_connect_start;
 static uint32_t wifi_disconnect_start;
@@ -171,9 +177,9 @@ user_rf_cal_sector_set(void)
 void ICACHE_FLASH_ATTR
 user_rf_pre_init(void)
 {
-#ifdef PROD_COMPILE
-    system_uart_swap();
-#endif
+// #ifdef PROD_COMPILE
+//     system_uart_swap();
+// #endif
 }
 
 
@@ -217,16 +223,15 @@ nw_recv_cb(void *arg, char *data, unsigned short len)
  * At this point, the connection to the remote server is established
  * Time to send some data
  */
-#define THINGSPEAK_API_KEY "xx"
 LOCAL void ICACHE_FLASH_ATTR
 nw_connect_cb(void *arg)
 {
+    DBG("nw_connect_cb\n");
+    
     struct espconn *p_nwconn = (struct espconn *)arg;
     
     char *data = (char *)os_zalloc(packet_size);    
     char *url = (char *)os_zalloc(packet_size);
-
-    DBG("nw_connect_cb\n");
 
     espconn_regist_recvcb(p_nwconn, nw_recv_cb);
     espconn_regist_sentcb(p_nwconn, nw_sent_cb);
@@ -247,9 +252,7 @@ nw_connect_cb(void *arg)
     os_free(url);
 }
 
-#define SLEEP_TIME 500
-#define WAKE_WITH_WIFI_AND_DEF_CAL 0
-#define WAKE_WITHOUT_WIFI 4
+
 /*
  * Re-Connect callback. 
  * Do nothing?
@@ -257,13 +260,46 @@ nw_connect_cb(void *arg)
 LOCAL void ICACHE_FLASH_ATTR
 nw_reconnect_cb(void *arg, int8_t errno)
 {
-    struct espconn *p_nwconn = (struct espconn *)arg;
-
     //TODO: Server down => log error and sleep
     DBG("nw_reconnect_cb errno=%d, is server running, retry?\n", errno);
     
-    deep_sleep_set_option( WAKE_WITH_WIFI_AND_DEF_CAL );//TODO: count before rf cal!!!
+    struct espconn *p_nwconn = (struct espconn *)arg;
+    
+    deep_sleep_set_option( DESIRED_WIFI_WAKE_MODE );//TODO: count before rf cal!!!
     DEEP_SLEEP( SLEEP_TIME * 1000 ); 
+}
+
+LOCAL void ICACHE_FLASH_ATTR
+actualSleepAfterSend()
+{
+    uint32_t wakup_end = system_get_time();
+    currentTotalDuration = wakup_end - wakeup_start;
+    currentDisconnectDuration = wakup_end - wifi_disconnect_start;
+    //setup for the next wake
+    rtcData.workingMode = MODE_READ;
+    rtcData.previousSendDuration = currentSendingDuration;
+    rtcData.previousTotalDuration = currentTotalDuration;
+    rtcData.previousDisconnectDuration = currentDisconnectDuration;
+    rtcData.counterIterations = rtcData.counterIterations + 1;
+    system_rtc_mem_write(RTCMEMORYSTART, &rtcData, sizeof(rtcData));
+    
+    uint32_t wakup_end2 = system_get_time();
+    DBG_TIME("e2eWiAttach %d ms\n", wifiConnectionDuration/1000);            
+    DBG_TIME("e2eWiSend %d ms\n", currentSendingDuration/1000);
+    DBG_TIME("e2eWiDisc %d ms\n", currentDisconnectDuration/1000);
+    DBG_TIME("e2eWiTot %d ms\n", currentTotalDuration/1000);
+    DBG_TIME("e2eWiWrite %d us\n", wakup_end2 - wakup_end);
+    
+    deep_sleep_set_option( WAKE_WITHOUT_WIFI );//TODO: count before rf cal!!!
+    DEEP_SLEEP( SLEEP_TIME * 1000 ); 
+}
+
+LOCAL void ICACHE_FLASH_ATTR
+sleepAfterSend()
+{
+    os_timer_disarm(&sleepAfterSendTmr);
+    os_timer_setfn(&sleepAfterSendTmr, actualSleepAfterSend,  NO_ARG);
+    os_timer_arm(&sleepAfterSendTmr, 10, DO_NOT_REPEAT_T);
 }
 
 /*
@@ -278,7 +314,47 @@ nw_disconnect_cb(void *arg)
 
     DBG("nw_disconnect_cb\n");
     wifi_disconnect_start = system_get_time();
-    wifi_station_disconnect();
+    //wifi_station_disconnect();
+    sleepAfterSend();
+}
+
+static bool ipok = 0;
+static bool waitok = 0;
+
+void sendData()
+{
+    DBG("sendData: %d, %d\n", ipok, waitok);
+    if(ipok && waitok)
+    {
+        uint8 stst = wifi_station_get_connect_status();
+        DBG("wifi status %d \n", stst);
+        
+        const char hostip[4] = HOST_IP;
+        nwconn.type = ESPCONN_TCP;
+        nwconn.proto.tcp = &conntcp;
+        os_memcpy(conntcp.remote_ip, hostip, 4);
+        conntcp.remote_port = 443;
+        conntcp.local_port = espconn_port();
+        
+        
+        espconn_regist_connectcb(&nwconn, nw_connect_cb);
+        espconn_regist_disconcb(&nwconn, nw_disconnect_cb);
+        espconn_regist_reconcb(&nwconn, nw_reconnect_cb);
+        
+        http_start = system_get_time();
+        //espconn_connect(&nwconn);
+        espconn_secure_set_size(ESPCONN_CLIENT,8192); 
+        sint8 conStatus = espconn_secure_connect(&nwconn);
+        DBG("Con status %d \n", conStatus);
+        if(conStatus == -16)
+        {
+            espconn_secure_disconnect(&nwconn);
+            
+            os_timer_disarm(&sendDataTmr);
+            os_timer_setfn(&sendDataTmr, sendData,  NO_ARG);
+            os_timer_arm(&sendDataTmr, 100, DO_NOT_REPEAT_T);
+        }
+    }
 }
 
 // EVENT_STAMODE_CONNECTED 0
@@ -292,6 +368,7 @@ nw_disconnect_cb(void *arg)
 // EVENT_OPMODE_CHANGED 8
 // EVENT_MAX 9
 
+
 void wifi_callback( System_Event_t *evt )
 {
     DBG( "here: %s: %d\n", __FUNCTION__, evt->event );
@@ -300,71 +377,29 @@ void wifi_callback( System_Event_t *evt )
     {
         /*0*/ case EVENT_STAMODE_CONNECTED:
         {
-            DBG("EVENT_STAMODE_CONNECTED connect to ssid %s, channel %d\n",
-                        evt->event_info.connected.ssid,
-                        evt->event_info.connected.channel);
+            DBG("EVENT_STAMODE_CONNECTED\n");
             break;
         }
 
-        case EVENT_STAMODE_DISCONNECTED:
+        /*1*/ case EVENT_STAMODE_DISCONNECTED:
         {
-            DBG("EVENT_STAMODE_DISCONNECTED disconnect from ssid %s, reason %d\n",
-                        evt->event_info.disconnected.ssid,
-                        evt->event_info.disconnected.reason);
+            DBG("EVENT_STAMODE_DISCONNECTED\n");
             
-            uint32_t wakup_end = system_get_time();
-            currentTotalDuration = wakup_end - wakeup_start;
-            currentDisconnectDuration = wakup_end - wifi_disconnect_start;
-            //setup for the next wake
-            rtcData.workingMode = MODE_READ;
-            rtcData.previousSendDuration = currentSendingDuration;
-            rtcData.previousTotalDuration = currentTotalDuration;
-            rtcData.previousDisconnectDuration = currentDisconnectDuration;
-            rtcData.counterIterations = rtcData.counterIterations + 1;
-            system_rtc_mem_write(RTCMEMORYSTART, &rtcData, sizeof(rtcData));
-            
-            uint32_t wakup_end2 = system_get_time();
-            DBG_TIME("e2eWiAttach %d ms\n", wifiConnectionDuration/1000);            
-            DBG_TIME("e2eWiSend %d ms\n", currentSendingDuration/1000);
-            DBG_TIME("e2eWiDisc %d ms\n", currentDisconnectDuration/1000);
-            DBG_TIME("e2eWiTot %d ms\n", currentTotalDuration/1000);
-            DBG_TIME("e2eWiWrite %d us\n", wakup_end2 - wakup_end);
-            deep_sleep_set_option( WAKE_WITHOUT_WIFI );//TODO: count before rf cal!!!
-            DEEP_SLEEP( SLEEP_TIME * 1000 ); 
+            //sleepAfterSend();
             break;
         }
 
-        /*3*/case EVENT_STAMODE_GOT_IP:
+        /*3*/ case EVENT_STAMODE_GOT_IP:
         
         {
             uint32_t wifi_end = system_get_time();
 
             wifiConnectionDuration = wifi_end - wifi_connect_start;
-            DBG("EVENT_STAMODE_GOT_IP ip:" IPSTR ",mask:" IPSTR ",gw:" IPSTR,
-                        IP2STR(&evt->event_info.got_ip.ip),
-                        IP2STR(&evt->event_info.got_ip.mask),
-                        IP2STR(&evt->event_info.got_ip.gw));
-            DBG("\n");
-            
-            //TODO: change here to direct IP without DNS!
-            //espconn_gethostbyname( &dweet_conn, dweet_host, &dweet_ip, dns_done );
-            
-            const char thingspeak_ip[4] = HOST_IP;
-            nwconn.type = ESPCONN_TCP;
-            nwconn.proto.tcp = &conntcp;
-            os_memcpy(conntcp.remote_ip, thingspeak_ip, 4);
-            conntcp.remote_port = 443;
-            conntcp.local_port = espconn_port();
-            
-            
-            espconn_regist_connectcb(&nwconn, nw_connect_cb);
-            espconn_regist_disconcb(&nwconn, nw_disconnect_cb);
-            espconn_regist_reconcb(&nwconn, nw_reconnect_cb);
-            
-            http_start = system_get_time();
-            //espconn_connect(&nwconn);
-            espconn_secure_set_size(ESPCONN_CLIENT,5120); 
-            espconn_secure_connect(&nwconn);
+            DBG("EVENT_STAMODE_GOT_IP %d\n", wifiConnectionDuration / 1000);
+            ipok = 1;
+            os_timer_disarm(&sendDataTmr);
+            os_timer_setfn(&sendDataTmr, sendData,  NO_ARG);
+            os_timer_arm(&sendDataTmr, 1, DO_NOT_REPEAT_T);
             
             break;
         }
@@ -406,12 +441,9 @@ fillPreviousSendDuration()
 // 	 REANSON_EXT_SYS_RST	 =	6,	 //	external	system	reset
 // };
 
-
-#define WEATHER_READ_IN_MS 110
 LOCAL void ICACHE_FLASH_ATTR
-readData(void)
-{
-    
+readDataActual()
+{   
     if (BME280_Init(BME280_MODE_FORCED) ) 
     {
         BME280_readSensorData();
@@ -436,52 +468,77 @@ readData(void)
 
     system_rtc_mem_write(RTCMEMORYSTART, &rtcData, sizeof(rtcData));
     DBG_TIME("e2eWe %d\n", rtcData.weatherReadingDuration / 1000);
-
-    deep_sleep_set_option( WAKE_WITH_WIFI_AND_DEF_CAL );
+    
+    deep_sleep_set_option( DESIRED_WIFI_WAKE_MODE );
     DEEP_SLEEP( 10 ); 
+}
+
+#define WEATHER_READ_IN_MS 110
+LOCAL void ICACHE_FLASH_ATTR
+readData(void)
+{
+    os_timer_disarm(&sleepAfterReadTmr);
+    os_timer_setfn(&sleepAfterReadTmr, readDataActual,  NO_ARG);
+    os_timer_arm(&sleepAfterReadTmr, 10, DO_NOT_REPEAT_T);
 }
 
 LOCAL void ICACHE_FLASH_ATTR 
 work(void)
 {
-    static struct station_config config;
-    
     //uart_div_modify( 0, UART_CLK_FREQ / ( 115200 ) );
-    fillPreviousSendDuration();
+    fillPreviousSendDuration();    
     
     if (rtcData.workingMode == MODE_SEND)
     { 
-        wifi_connect_start = system_get_time();
-        
-        //wifi_station_set_hostname( "TestSleep" );
-        
-        //gpio_init();
-        
-        os_memcpy( &config.ssid, ROUTER_NAME, 32 );        
-        os_memcpy( &config.password, ROUTER_PASS, 64 );
-        
-        config.bssid_set = 1;
-        
-        uint8 targetBssid[6] = ROUTER_BSSID;        
-        memcpy((void *) &config.bssid[0], (void *) targetBssid, 6);
-        
-        wifi_set_channel(ROUTER_CHANNEL);//does not write to flash
-         
-        wifi_station_set_config_current( &config );
-        
-        //ip:192.168.0.108,mask:255.255.255.0,gw:192.168.0.1
-        struct ip_info info;
-        IP4_ADDR(&info.ip,192,168,1,IP_SUFFIX);
-        IP4_ADDR(&info.gw,192,168,1,1);
-        IP4_ADDR(&info.netmask,255,255,255,0);
-        wifi_set_ip_info(STATION_IF,&info);//does not write to flash
-        
-        wifi_set_event_handler_cb( wifi_callback );
-        uint32_t config_end = system_get_time();
-        
-        DBG_TIME("+++ wifi init %d us\n", (config_end - wifi_connect_start));
-        DBG("+Connect to wifi ...\n");
-        wifi_station_connect();        
+        waitok = 1;
+        os_timer_disarm(&sendDataTmr);
+        os_timer_setfn(&sendDataTmr, sendData,  NO_ARG);
+        os_timer_arm(&sendDataTmr, 10, DO_NOT_REPEAT_T);
+                
+//         struct station_config config;
+//         wifi_connect_start = system_get_time();
+//         
+//         struct station_config flashConfig;
+//         wifi_station_get_config(&flashConfig);
+//         DBG("ssid %s\n", flashConfig.ssid);
+//         DBG("pssw %s\n", flashConfig.password);
+//         DBG("bset %d\n", flashConfig.bssid_set);
+//         DBG("bssd %d\n", flashConfig.bssid);
+//         
+//         //wifi_station_set_hostname( "TestSleep" );
+//         
+//         //gpio_init();
+//         
+//         os_memcpy( &config.ssid, ROUTER_NAME, 32 );        
+//         os_memcpy( &config.password, ROUTER_PASS, 64 );
+//         
+//         //config.bssid_set = 1;
+//         config.bssid_set = 0; 
+//         
+//         uint8 targetBssid[6] = ROUTER_BSSID;        
+//         memcpy((void *) &config.bssid[0], (void *) targetBssid, 6);
+//         
+//         if(wifi_get_channel() != ROUTER_CHANNEL)
+//         {
+//             DBG("Set channel to %d\n", ROUTER_CHANNEL);
+//             wifi_set_channel(ROUTER_CHANNEL);//does not write to flash
+//         }
+//         
+//         //ip:192.168.0.108,mask:255.255.255.0,gw:192.168.0.1
+//         struct ip_info info;
+//         IP4_ADDR(&info.ip,192,168,1,IP_SUFFIX);
+//         IP4_ADDR(&info.gw,192,168,1,1);
+//         IP4_ADDR(&info.netmask,255,255,255,0);
+//         wifi_set_ip_info(STATION_IF,&info);//does not write to flash
+//         
+//         wifi_set_event_handler_cb( wifi_callback );
+//         uint32_t config_end = system_get_time();
+//         
+//         //wifi_station_set_config_current( &config );
+//         wifi_station_set_config( &config );
+//         DBG_TIME("+++ wifi init %d us\n", (config_end - wifi_connect_start));
+//         DBG("+Connect to wifi ...\n");
+//         wifi_station_connect(); 
     }
     else
     {
@@ -499,16 +556,36 @@ initialWait(void * arg)
 LOCAL void ICACHE_FLASH_ATTR
 system_operational(void)
 {
-    uint8 currentOpMode = wifi_get_opmode_default();
-    //DBG("currentOpMode %d\n", currentOpMode);
-    if(currentOpMode != WIFI_MODE_STATON)
+    //    wifi_station_set_auto_connect(1);
+//     if(wifi_station_get_auto_connect() != 0)
+//     {
+//         DBG("reseting auto connect %d\n", wifi_station_get_auto_connect());
+//         wifi_station_set_auto_connect(0);//disable auto connect
+//     }
+    
+    if(wifi_station_dhcpc_status() != 0)
     {
-        wifi_set_opmode(WIFI_MODE_STATON);
+        DBG("disable dhcp %d\n", wifi_station_dhcpc_status());
+        wifi_station_dhcpc_stop();//disable dhcp
+        struct ip_info info;
+        IP4_ADDR(&info.ip,192,168,1,IP_SUFFIX);
+        IP4_ADDR(&info.gw,192,168,1,1);
+        IP4_ADDR(&info.netmask,255,255,255,0);
+        wifi_set_ip_info(STATION_IF,&info);//does not write to flash
     }
+    
+    uint8 currentOpMode = wifi_get_opmode_default();
+    
+    if(currentOpMode != DESIRED_WIFI_MODE)
+    {
+        DBG("currentOpMode %d, change to %d\n", currentOpMode, DESIRED_WIFI_MODE);
+        wifi_set_opmode(DESIRED_WIFI_MODE);
+    }
+
     
     struct rst_info *rtc_info = system_get_rst_info();
     resetReason = rtc_info->reason;
-    DBG("Reset %d\n", resetReason);
+    DBG("Reset %d time[%d]\n", resetReason, ((system_get_time() - wakeup_start) / 1000));
     
     
     if(resetReason == 6)
@@ -532,11 +609,9 @@ system_operational(void)
 *******************************************************************************/
 void ICACHE_FLASH_ATTR
 user_init(void)
-{    
-    wifi_station_set_auto_connect(0);//disable auto connect
-    wifi_station_dhcpc_stop();//disable dhcp
-    wakeup_start = system_get_time();
-    
+{   
+    wifi_set_event_handler_cb( wifi_callback );
+    wakeup_start = system_get_time();    
     system_init_done_cb(system_operational);
 }
 
