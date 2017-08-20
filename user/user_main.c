@@ -33,6 +33,7 @@
 #include "user_interface.h"
 
 #define DEV_210
+#define IP_3 2
 
 #ifdef DEV_152
 #define IP_SUFFIX 152 
@@ -49,11 +50,15 @@
 #ifdef DEV_210
 #define IP_SUFFIX 210
 #define FILE_RESULTS "results210.txt"
-#define CORRECTION -357 //3328 2751
+#define CORRECTION 216//3328 2751
 #endif
 
 #define DO_NOT_REPEAT_T 0
 #define NO_ARG  NULL
+
+#define DESIRED_AUTOCONNECT AUTOCONNECT_ON
+#define AUTOCONNECT_ON 1
+#define AUTOCONNECT_OFF 0
 
 #define DESIRED_WIFI_MODE WIFI_MODE_STATON
 #define WIFI_MODE_STATON 1
@@ -66,7 +71,7 @@
 
 #define packet_size 2048
 
-#define DEV_COMPILE
+#define PROD_COMPILE
 
 #ifdef DEV_COMPILE
 #define DBG os_printf
@@ -172,14 +177,19 @@ user_rf_cal_sector_set(void)
     return rf_cal_sec;
 }
 
-
+static void uart_ignore_char(char c)
+{
+    (void) c;
+}
 
 void ICACHE_FLASH_ATTR
 user_rf_pre_init(void)
 {
-// #ifdef PROD_COMPILE
+ #ifdef PROD_COMPILE
 //     system_uart_swap();
-// #endif
+     system_set_os_print(0);
+     ets_install_putc1((void *) &uart_ignore_char);
+ #endif
 }
 
 
@@ -252,23 +262,6 @@ nw_connect_cb(void *arg)
     os_free(url);
 }
 
-
-/*
- * Re-Connect callback. 
- * Do nothing?
- */
-LOCAL void ICACHE_FLASH_ATTR
-nw_reconnect_cb(void *arg, int8_t errno)
-{
-    //TODO: Server down => log error and sleep
-    DBG("nw_reconnect_cb errno=%d, is server running, retry?\n", errno);
-    
-    struct espconn *p_nwconn = (struct espconn *)arg;
-    
-    deep_sleep_set_option( DESIRED_WIFI_WAKE_MODE );//TODO: count before rf cal!!!
-    DEEP_SLEEP( SLEEP_TIME * 1000 ); 
-}
-
 LOCAL void ICACHE_FLASH_ATTR
 actualSleepAfterSend()
 {
@@ -303,6 +296,21 @@ sleepAfterSend()
 }
 
 /*
+ * Re-Connect callback. 
+ * Do nothing?
+ */
+LOCAL void ICACHE_FLASH_ATTR
+nw_reconnect_cb(void *arg, int8_t errno)
+{
+    //TODO: Server down => log error and sleep
+    DBG("nw_reconnect_cb errno=%d, is server running, retry?\n", errno);
+    
+    struct espconn *p_nwconn = (struct espconn *)arg;
+    
+    sleepAfterSend();
+}
+
+/*
  * Dis-Connect callback. 
  * Do nothing?
  */
@@ -314,7 +322,7 @@ nw_disconnect_cb(void *arg)
 
     DBG("nw_disconnect_cb\n");
     wifi_disconnect_start = system_get_time();
-    //wifi_station_disconnect();
+    //wifi_station_disconnect();    
     sleepAfterSend();
 }
 
@@ -367,8 +375,6 @@ void sendData()
 // EVENT_SOFTAPMODE_PROBEREQRECVED 7
 // EVENT_OPMODE_CHANGED 8
 // EVENT_MAX 9
-
-
 void wifi_callback( System_Event_t *evt )
 {
     DBG( "here: %s: %d\n", __FUNCTION__, evt->event );
@@ -553,23 +559,76 @@ initialWait(void * arg)
     work();
 }
 
+ICACHE_FLASH_ATTR
+bool sta_config_differ(struct station_config * lhs, struct station_config * rhs) 
+{
+    if(strcmp(lhs->ssid, rhs->ssid) != 0) {
+        return true;
+    }
+
+    if(strcmp(lhs->password, rhs->password) != 0) {
+        return true;
+    }
+
+    if(lhs->bssid_set != rhs->bssid_set) {
+        return true;
+    }
+
+    if(lhs->bssid_set) {
+        if(memcmp(lhs->bssid, rhs->bssid, 6) != 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 LOCAL void ICACHE_FLASH_ATTR
 system_operational(void)
 {
-    //    wifi_station_set_auto_connect(1);
-//     if(wifi_station_get_auto_connect() != 0)
-//     {
-//         DBG("reseting auto connect %d\n", wifi_station_get_auto_connect());
-//         wifi_station_set_auto_connect(0);//disable auto connect
-//     }
+    struct rst_info *rtc_info = system_get_rst_info();
+    resetReason = rtc_info->reason;
+    DBG("Reset %d time[%d]\n", resetReason, ((system_get_time() - wakeup_start) / 1000));
+    
+    if(wifi_station_get_auto_connect() != DESIRED_AUTOCONNECT)
+    {
+        DBG("reseting auto connect to %d, old %d\n", DESIRED_AUTOCONNECT, wifi_station_get_auto_connect());
+        wifi_station_set_auto_connect(DESIRED_AUTOCONNECT);
+    }
+    
+    struct station_config flashConfig;
+    wifi_station_get_config(&flashConfig);
+    if(resetReason == 6)
+    {
+        struct station_config config;
+        os_memcpy( &config.ssid, ROUTER_NAME, 32 );        
+        os_memcpy( &config.password, ROUTER_PASS, 64 );
+        config.bssid_set = 0; 
+        
+        DBG("current ssid %s\n", flashConfig.ssid);
+        DBG("current pssw %s\n", flashConfig.password);
+        DBG("current bset %d\n", flashConfig.bssid_set);
+        DBG("current bssd %d\n", flashConfig.bssid);
+        
+        if(sta_config_differ(&flashConfig, &config))
+        {
+            wifi_station_set_config(&config);
+            wifi_station_get_config(&flashConfig);
+            
+            DBG("new ssid %s\n", flashConfig.ssid);
+            DBG("new pssw %s\n", flashConfig.password);
+            DBG("new bset %d\n", flashConfig.bssid_set);
+            DBG("new bssd %d\n", flashConfig.bssid);
+        }
+    }
     
     if(wifi_station_dhcpc_status() != 0)
     {
         DBG("disable dhcp %d\n", wifi_station_dhcpc_status());
         wifi_station_dhcpc_stop();//disable dhcp
         struct ip_info info;
-        IP4_ADDR(&info.ip,192,168,1,IP_SUFFIX);
-        IP4_ADDR(&info.gw,192,168,1,1);
+        IP4_ADDR(&info.ip,192,168,IP_3,IP_SUFFIX);
+        IP4_ADDR(&info.gw,192,168,IP_3,1);
         IP4_ADDR(&info.netmask,255,255,255,0);
         wifi_set_ip_info(STATION_IF,&info);//does not write to flash
     }
@@ -581,11 +640,6 @@ system_operational(void)
         DBG("currentOpMode %d, change to %d\n", currentOpMode, DESIRED_WIFI_MODE);
         wifi_set_opmode(DESIRED_WIFI_MODE);
     }
-
-    
-    struct rst_info *rtc_info = system_get_rst_info();
-    resetReason = rtc_info->reason;
-    DBG("Reset %d time[%d]\n", resetReason, ((system_get_time() - wakeup_start) / 1000));
     
     
     if(resetReason == 6)
