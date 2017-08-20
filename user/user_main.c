@@ -33,7 +33,7 @@
 #include "user_interface.h"
 
 #define DEV_210
-#define IP_3 2
+#define IP_3 1
 
 #ifdef DEV_152
 #define IP_SUFFIX 152 
@@ -71,7 +71,8 @@
 
 #define packet_size 2048
 
-#define PROD_COMPILE
+//#define SEND_SECURE
+#define DEV_COMPILE
 
 #ifdef DEV_COMPILE
 #define DBG os_printf
@@ -192,6 +193,58 @@ user_rf_pre_init(void)
  #endif
 }
 
+LOCAL void ICACHE_FLASH_ATTR nw_connect_cb(void *arg);
+LOCAL void ICACHE_FLASH_ATTR nw_reconnect_cb(void *arg, int8_t errno);
+LOCAL void ICACHE_FLASH_ATTR nw_disconnect_cb(void *arg);
+
+static bool ipok = 0;
+static bool waitok = 0;
+void sendData()
+{
+    DBG("sendData: %d, %d\n", ipok, waitok);
+    if(ipok && waitok)
+    {
+        uint8 stst = wifi_station_get_connect_status();
+        DBG("wifi status %d \n", stst);
+        
+        const char hostip[4] = HOST_IP;
+        nwconn.type = ESPCONN_TCP;
+        nwconn.proto.tcp = &conntcp;
+        os_memcpy(conntcp.remote_ip, hostip, 4);
+#ifdef SEND_SECURE        
+        conntcp.remote_port = 443;
+#else
+        conntcp.remote_port = 8000;
+#endif        
+        conntcp.local_port = espconn_port();
+        
+        
+        espconn_regist_connectcb(&nwconn, nw_connect_cb);
+        espconn_regist_disconcb(&nwconn, nw_disconnect_cb);
+        espconn_regist_reconcb(&nwconn, nw_reconnect_cb);
+        
+        http_start = system_get_time();
+        
+#ifdef SEND_SECURE
+        espconn_secure_set_size(ESPCONN_CLIENT,8192); 
+        sint8 conStatus = espconn_secure_connect(&nwconn);        
+        DBG("Con secure status %d \n", conStatus);
+        if(conStatus == -16)
+        {
+            espconn_secure_disconnect(&nwconn);
+            
+            os_timer_disarm(&sendDataTmr);
+            os_timer_setfn(&sendDataTmr, sendData,  NO_ARG);
+            os_timer_arm(&sendDataTmr, 100, DO_NOT_REPEAT_T); 
+        }
+#else
+        sint8 conStatus = espconn_connect(&nwconn);        
+        DBG("Con status %d \n", conStatus);
+#endif
+        
+    }
+}
+
 
 LOCAL void ICACHE_FLASH_ATTR
 nw_close_cb(void * arg)
@@ -250,13 +303,17 @@ nw_connect_cb(void *arg)
     
     os_sprintf( url, "/iot/gate?file=%s&1=%d&2=%d&3=%d&4=%d&5=%d&6=%d&7=%d&8=%d&9=%d&10=%d&11=%d&12=%d", 
                 FILE_RESULTS, rtcData.t, rtcData.h, rtcData.p, voltage, wifiConnectionDuration, rtcData.weatherReadingDuration, rtcData.previousSendDuration,
-                rtcData.previousTotalDuration, rtcData.previousDisconnectDuration, rtcData.counterIterations, rtcData.originalResetReason, resetReason);
+                rtcData.previousTotalDuration, rtcData.previousDisconnectDuration, rtcData.counterIterations, rtcData.originalResetReason, resetReason);    
     
     os_sprintf( data, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", url, HOST_NAME, os_strlen( "" ), "" );
                 
     
     DBG("Sending: %s\n", data );
+#ifdef SEND_SECURE
     espconn_secure_sent(p_nwconn, data, os_strlen(data));
+#else    
+    espconn_sent(p_nwconn, data, os_strlen(data));
+#endif
     
     os_free(data);
     os_free(url);
@@ -324,45 +381,6 @@ nw_disconnect_cb(void *arg)
     wifi_disconnect_start = system_get_time();
     //wifi_station_disconnect();    
     sleepAfterSend();
-}
-
-static bool ipok = 0;
-static bool waitok = 0;
-
-void sendData()
-{
-    DBG("sendData: %d, %d\n", ipok, waitok);
-    if(ipok && waitok)
-    {
-        uint8 stst = wifi_station_get_connect_status();
-        DBG("wifi status %d \n", stst);
-        
-        const char hostip[4] = HOST_IP;
-        nwconn.type = ESPCONN_TCP;
-        nwconn.proto.tcp = &conntcp;
-        os_memcpy(conntcp.remote_ip, hostip, 4);
-        conntcp.remote_port = 443;
-        conntcp.local_port = espconn_port();
-        
-        
-        espconn_regist_connectcb(&nwconn, nw_connect_cb);
-        espconn_regist_disconcb(&nwconn, nw_disconnect_cb);
-        espconn_regist_reconcb(&nwconn, nw_reconnect_cb);
-        
-        http_start = system_get_time();
-        //espconn_connect(&nwconn);
-        espconn_secure_set_size(ESPCONN_CLIENT,8192); 
-        sint8 conStatus = espconn_secure_connect(&nwconn);
-        DBG("Con status %d \n", conStatus);
-        if(conStatus == -16)
-        {
-            espconn_secure_disconnect(&nwconn);
-            
-            os_timer_disarm(&sendDataTmr);
-            os_timer_setfn(&sendDataTmr, sendData,  NO_ARG);
-            os_timer_arm(&sendDataTmr, 100, DO_NOT_REPEAT_T); 
-        }
-    }
 }
 
 // EVENT_STAMODE_CONNECTED 0
