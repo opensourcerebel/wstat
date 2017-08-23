@@ -32,13 +32,16 @@
 
 #include "user_interface.h"
 
-#define DEV_210
+#define PROD_COMPILE
+#define DEV_152
+#define SLEEP_TIME 1
+
 #define IP_3 1
 
 #ifdef DEV_152
 #define IP_SUFFIX 152 
 #define FILE_RESULTS "results152.txt"
-#define CORRECTION 211 //3539-3328
+#define CORRECTION -213 //3539-3328 //-211
 #endif
 
 #ifdef DEV_126
@@ -50,7 +53,7 @@
 #ifdef DEV_210
 #define IP_SUFFIX 210
 #define FILE_RESULTS "results210.txt"
-#define CORRECTION 216//3328 2751
+#define CORRECTION -216//3328 2751
 #endif
 
 #define DO_NOT_REPEAT_T 0
@@ -72,7 +75,6 @@
 #define packet_size 2048
 
 //#define SEND_SECURE
-#define DEV_COMPILE
 
 #ifdef DEV_COMPILE
 #define DBG os_printf
@@ -86,7 +88,7 @@
 #define DEEP_SLEEP system_deep_sleep_instant
 #endif
 
-#define SLEEP_TIME 500
+
 #define DESIRED_WIFI_WAKE_MODE WAKE_WITH_WIFI_AND_DEF_CAL
 #define WAKE_WITH_WIFI_AND_DEF_CAL 0
 #define WAKE_WITH_WIFI_NO_CAL 2
@@ -186,6 +188,7 @@ static void uart_ignore_char(char c)
 void ICACHE_FLASH_ATTR
 user_rf_pre_init(void)
 {
+    wifi_connect_start = system_get_time(); 
  #ifdef PROD_COMPILE
 //     system_uart_swap();
      system_set_os_print(0);
@@ -298,14 +301,14 @@ nw_connect_cb(void *arg)
 
     espconn_regist_recvcb(p_nwconn, nw_recv_cb);
     espconn_regist_sentcb(p_nwconn, nw_sent_cb);
-    uint16_t voltage = system_get_vdd33() - CORRECTION;
+    uint16_t voltage = system_get_vdd33() + CORRECTION;
     DBG("volt%d\n", voltage);
     
     os_sprintf( url, "/iot/gate?file=%s&1=%d&2=%d&3=%d&4=%d&5=%d&6=%d&7=%d&8=%d&9=%d&10=%d&11=%d&12=%d", 
                 FILE_RESULTS, rtcData.t, rtcData.h, rtcData.p, voltage, wifiConnectionDuration, rtcData.weatherReadingDuration, rtcData.previousSendDuration,
                 rtcData.previousTotalDuration, rtcData.previousDisconnectDuration, rtcData.counterIterations, rtcData.originalResetReason, resetReason);    
     
-    os_sprintf( data, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", url, HOST_NAME, os_strlen( "" ), "" );
+    os_sprintf( data, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: text/html\r\nContent-Length: %d\r\n\r\n%s", url, HOST_NAME, os_strlen( "" ), "" );
                 
     
     DBG("Sending: %s\n", data );
