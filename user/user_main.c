@@ -1,27 +1,3 @@
-/*
- * ESPRESSIF MIT License
- *
- * Copyright (c) 2016 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
- *
- * Permission is hereby granted for use on ESPRESSIF SYSTEMS ESP8266 only, in which case,
- * it is free of charge, to any person obtaining a copy of this software and associated
- * documentation files (the "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the Software is furnished
- * to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all copies or
- * substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- */
-
 #include "ets_sys.h"
 #include "osapi.h"
 #include "pass_router.h"
@@ -35,6 +11,23 @@
 #define PROD_COMPILE
 #define DEV_152
 #define SLEEP_TIME 1
+
+
+//#define SEND_SECURE
+
+#ifdef DEV_COMPILE
+#define DBG os_printf
+#define DBG_TIME os_printf
+#define DEEP_SLEEP system_deep_sleep
+#define DEEP_SLEEP START_TOTAL_TIME_LIMIT
+#endif
+
+#ifdef PROD_COMPILE
+#define DBG 
+#define DBG_TIME 
+#define DEEP_SLEEP system_deep_sleep_instant
+#endif
+
 
 #define IP_3 1
 
@@ -74,25 +67,28 @@
 
 #define packet_size 2048
 
-//#define SEND_SECURE
-
-#ifdef DEV_COMPILE
-#define DBG os_printf
-#define DBG_TIME os_printf
-#define DEEP_SLEEP system_deep_sleep
-#endif
-
-#ifdef PROD_COMPILE
-#define DBG 
-#define DBG_TIME 
-#define DEEP_SLEEP system_deep_sleep_instant
-#endif
-
-
 #define DESIRED_WIFI_WAKE_MODE WAKE_WITH_WIFI_AND_DEF_CAL
 #define WAKE_WITH_WIFI_AND_DEF_CAL 0
 #define WAKE_WITH_WIFI_NO_CAL 2
 #define WAKE_WITHOUT_WIFI 4
+
+// enum	rst_reason	{
+// 	 REANSON_DEFAULT_RST	 =	0,	 //	normal	startup	by	power	on
+// 	 REANSON_WDT_RST	=	1,	 //	hardware	watch	dog	reset	exception	reset,	GPIO	status	won’t	change		
+// 	 REANSON_EXCEPTION_RST	 =	2,	 	 //	software	watch	dog	reset,	GPIO	status	won’t	change		
+// 	 REANSON_SOFT_WDT_RST	 =	3,	 	 //	software	restart	,system_restart	,	GPIO	status	won’t change
+// 	 REANSON_SOFT_RESTART	 =	4,	 	
+// 	 REANSON_DEEP_SLEEP_AWAKE=	5,				//	wake	up	from	deep-sleep	
+// 	 REANSON_EXT_SYS_RST	 =	6,	 //	external	system	reset
+// };
+//0 Power reboot Changed
+//1 Hardware WDT reset Changed
+//2 Fatal exception Unchanged
+//3 Software watchdog reset Unchanged
+//4 Software reset Unchanged
+//5 Deep-sleep Changed
+//6 Hardware reset Changed
+#define HARDARE_RESET 6
 
 static struct espconn nwconn;
 static esp_tcp conntcp;
@@ -100,6 +96,7 @@ static struct ip_info ipconfig;
 LOCAL os_timer_t nw_close_timer;
 LOCAL os_timer_t fake_weather_timer;
 LOCAL os_timer_t wait3sec;
+LOCAL os_timer_t totalTimeLimitTmr;
 LOCAL os_timer_t sleepAfterSendTmr;
 LOCAL os_timer_t sleepAfterReadTmr;
 LOCAL os_timer_t sendDataTmr;
@@ -119,6 +116,7 @@ struct {
   uint32_t previousTotalDuration;
   uint32_t previousDisconnectDuration;
   uint32_t counterIterations;
+  uint32_t counterCancelledIterations;
   uint32_t workingMode;
   uint32_t h;
   int32_t t;//TODO: test with - temp
@@ -202,7 +200,7 @@ LOCAL void ICACHE_FLASH_ATTR nw_disconnect_cb(void *arg);
 
 static bool ipok = 0;
 static bool waitok = 0;
-void sendData()
+void sendDataGated()
 {
     DBG("sendData: %d, %d\n", ipok, waitok);
     if(ipok && waitok)
@@ -237,7 +235,7 @@ void sendData()
             espconn_secure_disconnect(&nwconn);
             
             os_timer_disarm(&sendDataTmr);
-            os_timer_setfn(&sendDataTmr, sendData,  NO_ARG);
+            os_timer_setfn(&sendDataTmr, sendDataGated,  NO_ARG);
             os_timer_arm(&sendDataTmr, 100, DO_NOT_REPEAT_T); 
         }
 #else
@@ -304,9 +302,9 @@ nw_connect_cb(void *arg)
     uint16_t voltage = system_get_vdd33() + CORRECTION;
     DBG("volt%d\n", voltage);
     
-    os_sprintf( url, "/iot/gate?file=%s&1=%d&2=%d&3=%d&4=%d&5=%d&6=%d&7=%d&8=%d&9=%d&10=%d&11=%d&12=%d", 
+    os_sprintf( url, "/iot/gate?file=%s&1=%d&2=%d&3=%d&4=%d&5=%d&6=%d&7=%d&8=%d&9=%d&10=%d&11=%d&12=%d&13=%d", 
                 FILE_RESULTS, rtcData.t, rtcData.h, rtcData.p, voltage, wifiConnectionDuration, rtcData.weatherReadingDuration, rtcData.previousSendDuration,
-                rtcData.previousTotalDuration, rtcData.previousDisconnectDuration, rtcData.counterIterations, rtcData.originalResetReason, resetReason);    
+                rtcData.previousTotalDuration, rtcData.previousDisconnectDuration, rtcData.counterIterations, rtcData.counterCancelledIterations, rtcData.originalResetReason, resetReason);    
     
     os_sprintf( data, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: text/html\r\nContent-Length: %d\r\n\r\n%s", url, HOST_NAME, os_strlen( "" ), "" );
                 
@@ -352,7 +350,7 @@ sleepAfterSend()
 {
     os_timer_disarm(&sleepAfterSendTmr);
     os_timer_setfn(&sleepAfterSendTmr, actualSleepAfterSend,  NO_ARG);
-    os_timer_arm(&sleepAfterSendTmr, 10, DO_NOT_REPEAT_T);
+    os_timer_arm(&sleepAfterSendTmr, 1, DO_NOT_REPEAT_T);
 }
 
 /*
@@ -425,7 +423,7 @@ void wifi_callback( System_Event_t *evt )
             DBG("EVENT_STAMODE_GOT_IP %d\n", wifiConnectionDuration / 1000);
             ipok = 1;
             os_timer_disarm(&sendDataTmr);
-            os_timer_setfn(&sendDataTmr, sendData,  NO_ARG);
+            os_timer_setfn(&sendDataTmr, sendDataGated,  NO_ARG);
             os_timer_arm(&sendDataTmr, 1, DO_NOT_REPEAT_T);
             
             break;
@@ -443,30 +441,26 @@ fillPreviousSendDuration()
 {
   system_rtc_mem_read(RTCMEMORYSTART, &rtcData, sizeof(rtcData));
 
-  if (rtcData.originalResetReason != 5)
+  if (rtcData.originalResetReason == HARDARE_RESET)
   {
-    //reset the counter on unexpected event
+    DBG("Reset rtc data\n");
+    //reset the counter on initial reset
     rtcData.counterIterations = 1;
-  }
-
-  if (rtcData.workingMode != MODE_READ && rtcData.workingMode != MODE_SEND)
-  {
-    DBG("Reseting mode %d to read\n", rtcData.workingMode);
+    rtcData.counterCancelledIterations = 1;
+    
+    rtcData.previousSendDuration = 0;
+    rtcData.previousTotalDuration;
+    rtcData.previousDisconnectDuration;
     rtcData.workingMode = MODE_READ;
+    rtcData.h = 0;
+    rtcData.t = 0;//TODO: test with - temp
+    rtcData.p = 0;
+    rtcData.weatherReadingDuration = 0;
+    rtcData.originalResetReason = 0;
   }
   
   DBG("Working mode %d\n", rtcData.workingMode);
 }
-
-// enum	rst_reason	{
-// 	 REANSON_DEFAULT_RST	 =	0,	 //	normal	startup	by	power	on
-// 	 REANSON_WDT_RST	=	1,	 //	hardware	watch	dog	reset	exception	reset,	GPIO	status	won’t	change		
-// 	 REANSON_EXCEPTION_RST	 =	2,	 	 //	software	watch	dog	reset,	GPIO	status	won’t	change		
-// 	 REANSON_SOFT_WDT_RST	 =	3,	 	 //	software	restart	,system_restart	,	GPIO	status	won’t change
-// 	 REANSON_SOFT_RESTART	 =	4,	 	
-// 	 REANSON_DEEP_SLEEP_AWAKE=	5,				//	wake	up	from	deep-sleep	
-// 	 REANSON_EXT_SYS_RST	 =	6,	 //	external	system	reset
-// };
 
 LOCAL void ICACHE_FLASH_ATTR
 readDataActual()
@@ -506,7 +500,7 @@ readData(void)
 {
     os_timer_disarm(&sleepAfterReadTmr);
     os_timer_setfn(&sleepAfterReadTmr, readDataActual,  NO_ARG);
-    os_timer_arm(&sleepAfterReadTmr, 10, DO_NOT_REPEAT_T);
+    os_timer_arm(&sleepAfterReadTmr, 1, DO_NOT_REPEAT_T);
 }
 
 LOCAL void ICACHE_FLASH_ATTR 
@@ -519,53 +513,8 @@ work(void)
     { 
         waitok = 1;
         os_timer_disarm(&sendDataTmr);
-        os_timer_setfn(&sendDataTmr, sendData,  NO_ARG);
-        os_timer_arm(&sendDataTmr, 10, DO_NOT_REPEAT_T);
-                
-//         struct station_config config;
-//         wifi_connect_start = system_get_time();
-//         
-//         struct station_config flashConfig;
-//         wifi_station_get_config(&flashConfig);
-//         DBG("ssid %s\n", flashConfig.ssid);
-//         DBG("pssw %s\n", flashConfig.password);
-//         DBG("bset %d\n", flashConfig.bssid_set);
-//         DBG("bssd %d\n", flashConfig.bssid);
-//         
-//         //wifi_station_set_hostname( "TestSleep" );
-//         
-//         //gpio_init();
-//         
-//         os_memcpy( &config.ssid, ROUTER_NAME, 32 );        
-//         os_memcpy( &config.password, ROUTER_PASS, 64 );
-//         
-//         //config.bssid_set = 1;
-//         config.bssid_set = 0; 
-//         
-//         uint8 targetBssid[6] = ROUTER_BSSID;        
-//         memcpy((void *) &config.bssid[0], (void *) targetBssid, 6);
-//         
-//         if(wifi_get_channel() != ROUTER_CHANNEL)
-//         {
-//             DBG("Set channel to %d\n", ROUTER_CHANNEL);
-//             wifi_set_channel(ROUTER_CHANNEL);//does not write to flash
-//         }
-//         
-//         //ip:192.168.0.108,mask:255.255.255.0,gw:192.168.0.1
-//         struct ip_info info;
-//         IP4_ADDR(&info.ip,192,168,1,IP_SUFFIX);
-//         IP4_ADDR(&info.gw,192,168,1,1);
-//         IP4_ADDR(&info.netmask,255,255,255,0);
-//         wifi_set_ip_info(STATION_IF,&info);//does not write to flash
-//         
-//         wifi_set_event_handler_cb( wifi_callback );
-//         uint32_t config_end = system_get_time();
-//         
-//         //wifi_station_set_config_current( &config );
-//         wifi_station_set_config( &config );
-//         DBG_TIME("+++ wifi init %d us\n", (config_end - wifi_connect_start));
-//         DBG("+Connect to wifi ...\n");
-//         wifi_station_connect(); 
+        os_timer_setfn(&sendDataTmr, sendDataGated,  NO_ARG);
+        os_timer_arm(&sendDataTmr, 1, DO_NOT_REPEAT_T);
     }
     else
     {
@@ -607,8 +556,6 @@ bool sta_config_differ(struct station_config * lhs, struct station_config * rhs)
 LOCAL void ICACHE_FLASH_ATTR
 system_operational(void)
 {
-    struct rst_info *rtc_info = system_get_rst_info();
-    resetReason = rtc_info->reason;
     DBG("Reset %d time[%d]\n", resetReason, ((system_get_time() - wakeup_start) / 1000));
     
     if(wifi_station_get_auto_connect() != DESIRED_AUTOCONNECT)
@@ -663,7 +610,7 @@ system_operational(void)
     }
     
     
-    if(resetReason == 6)
+    if(resetReason == HARDARE_RESET)
     {
         os_timer_disarm(&wait3sec);
         os_timer_setfn(&wait3sec, initialWait,  NO_ARG);
@@ -676,6 +623,13 @@ system_operational(void)
     
 }
 
+void ICACHE_FLASH_ATTR
+totalTimeLimit()
+{
+    rtcData.counterCancelledIterations++;
+    sleepAfterSend();
+}
+
 /******************************************************************************
  * FunctionName : user_init
  * Description  : entry of user application, init user function here
@@ -685,8 +639,20 @@ system_operational(void)
 void ICACHE_FLASH_ATTR
 user_init(void)
 {   
+    struct rst_info *rtc_info = system_get_rst_info();
+    resetReason = rtc_info->reason;
+    
     wifi_set_event_handler_cb( wifi_callback );
     wakeup_start = system_get_time();    
     system_init_done_cb(system_operational);
+    
+#ifdef START_TOTAL_TIME_LIMIT
+    if(resetReason != HARDARE_RESET)
+    {
+        os_timer_disarm(&totalTimeLimitTmr);
+        os_timer_setfn(&totalTimeLimitTmr, ,  NO_ARG);
+        os_timer_arm(&totalTimeLimitTmr, 300, DO_NOT_REPEAT_T);
+    }
+#endif    
 }
 
