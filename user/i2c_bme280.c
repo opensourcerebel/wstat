@@ -83,6 +83,15 @@ bool ICACHE_FLASH_ATTR BME280_Init(uint8_t operationMode)
 	return 1;
 }
 
+void ICACHE_FLASH_ATTR BME280_InitFromSleep(uint8_t operationMode)
+{
+	i2c_init();
+
+	BME280_OperationMode = operationMode;
+
+	BME280_readCalibrationRegisters();
+}
+
 bool ICACHE_FLASH_ATTR BME280_sendI2cWriteData(uint8_t writeReg, uint8_t regData){
     if(!BME280_startI2cWrite() ){
     	return 0;

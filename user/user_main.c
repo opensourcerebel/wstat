@@ -8,9 +8,9 @@
 
 #include "user_interface.h"
 
-#define PROD_COMPILE
-#define DEV_152
-#define SLEEP_TIME 1
+#define DEV_COMPILE
+#define DEV_210
+#define SLEEP_TIME 600000
 
 
 //#define SEND_SECURE
@@ -19,13 +19,13 @@
 #define DBG os_printf
 #define DBG_TIME os_printf
 #define DEEP_SLEEP system_deep_sleep
-#define DEEP_SLEEP START_TOTAL_TIME_LIMIT
 #endif
 
 #ifdef PROD_COMPILE
 #define DBG 
 #define DBG_TIME 
 #define DEEP_SLEEP system_deep_sleep_instant
+#define START_TOTAL_TIME_LIMIT
 #endif
 
 
@@ -88,7 +88,9 @@
 //4 Software reset Unchanged
 //5 Deep-sleep Changed
 //6 Hardware reset Changed
+#define WAKE_FROM_DEEP_SLEEP 5
 #define HARDARE_RESET 6
+
 
 static struct espconn nwconn;
 static esp_tcp conntcp;
@@ -110,6 +112,7 @@ static uint32_t currentSendingDuration;
 static uint32_t currentDisconnectDuration;
 static uint32_t currentTotalDuration;
 static uint32_t resetReason;
+static uint32_t currentWorkingMode;
 
 struct {
   uint32_t previousSendDuration;
@@ -123,6 +126,7 @@ struct {
   uint32_t p;
   uint32_t weatherReadingDuration;
   uint32_t originalResetReason;
+  bool bmeInitOk;
   //uint32_t data[RTCMEMORYLEN*4];
 } rtcData;
 
@@ -323,6 +327,7 @@ nw_connect_cb(void *arg)
 LOCAL void ICACHE_FLASH_ATTR
 actualSleepAfterSend()
 {
+    DBG("sleepAfterSend\n");
     uint32_t wakup_end = system_get_time();
     currentTotalDuration = wakup_end - wakeup_start;
     currentDisconnectDuration = wakup_end - wifi_disconnect_start;
@@ -337,7 +342,7 @@ actualSleepAfterSend()
     uint32_t wakup_end2 = system_get_time();
     DBG_TIME("e2eWiAttach %d ms\n", wifiConnectionDuration/1000);            
     DBG_TIME("e2eWiSend %d ms\n", currentSendingDuration/1000);
-    DBG_TIME("e2eWiDisc %d ms\n", currentDisconnectDuration/1000);
+    DBG_TIME("e2eWiDisc+Write %d ms\n", currentDisconnectDuration/1000);
     DBG_TIME("e2eWiTot %d ms\n", currentTotalDuration/1000);
     DBG_TIME("e2eWiWrite %d us\n", wakup_end2 - wakup_end);
     
@@ -409,8 +414,10 @@ void wifi_callback( System_Event_t *evt )
         /*1*/ case EVENT_STAMODE_DISCONNECTED:
         {
             DBG("EVENT_STAMODE_DISCONNECTED\n");
-            
-            //sleepAfterSend();
+//             if(currentWorkingMode == MODE_SEND)
+//             {
+//                 sleepAfterSend();
+//             }
             break;
         }
 
@@ -441,12 +448,12 @@ fillPreviousSendDuration()
 {
   system_rtc_mem_read(RTCMEMORYSTART, &rtcData, sizeof(rtcData));
 
-  if (rtcData.originalResetReason == HARDARE_RESET)
+  if (resetReason != WAKE_FROM_DEEP_SLEEP)
   {
     DBG("Reset rtc data\n");
     //reset the counter on initial reset
     rtcData.counterIterations = 1;
-    rtcData.counterCancelledIterations = 1;
+    rtcData.counterCancelledIterations = 0;
     
     rtcData.previousSendDuration = 0;
     rtcData.previousTotalDuration;
@@ -456,8 +463,9 @@ fillPreviousSendDuration()
     rtcData.t = 0;//TODO: test with - temp
     rtcData.p = 0;
     rtcData.weatherReadingDuration = 0;
-    rtcData.originalResetReason = 0;
+    rtcData.originalResetReason = 0;    
   }
+  currentWorkingMode = rtcData.workingMode;
   
   DBG("Working mode %d\n", rtcData.workingMode);
 }
@@ -465,7 +473,19 @@ fillPreviousSendDuration()
 LOCAL void ICACHE_FLASH_ATTR
 readDataActual()
 {   
-    if (BME280_Init(BME280_MODE_FORCED) ) 
+    if(resetReason == WAKE_FROM_DEEP_SLEEP)
+    {
+        if(rtcData.bmeInitOk)
+        {
+            BME280_InitFromSleep(BME280_MODE_FORCED);
+        }
+    }
+    else
+    {
+        rtcData.bmeInitOk = BME280_Init(BME280_MODE_FORCED);
+    }
+    
+    if(rtcData.bmeInitOk)
     {
         BME280_readSensorData();
 
@@ -650,7 +670,7 @@ user_init(void)
     if(resetReason != HARDARE_RESET)
     {
         os_timer_disarm(&totalTimeLimitTmr);
-        os_timer_setfn(&totalTimeLimitTmr, ,  NO_ARG);
+        os_timer_setfn(&totalTimeLimitTmr, totalTimeLimit,  NO_ARG);
         os_timer_arm(&totalTimeLimitTmr, 300, DO_NOT_REPEAT_T);
     }
 #endif    
