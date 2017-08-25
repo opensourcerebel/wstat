@@ -8,9 +8,9 @@
 
 #include "user_interface.h"
 
-#define DEV_COMPILE
-#define DEV_210
-#define SLEEP_TIME 600000
+#define PROD_COMPILE
+#define DEV_152
+#define SLEEP_TIME 300000
 
 
 //#define SEND_SECURE
@@ -456,8 +456,8 @@ fillPreviousSendDuration()
     rtcData.counterCancelledIterations = 0;
     
     rtcData.previousSendDuration = 0;
-    rtcData.previousTotalDuration;
-    rtcData.previousDisconnectDuration;
+    rtcData.previousTotalDuration = 0;
+    rtcData.previousDisconnectDuration = 0;
     rtcData.workingMode = MODE_READ;
     rtcData.h = 0;
     rtcData.t = 0;//TODO: test with - temp
@@ -671,7 +671,7 @@ user_init(void)
     {
         os_timer_disarm(&totalTimeLimitTmr);
         os_timer_setfn(&totalTimeLimitTmr, totalTimeLimit,  NO_ARG);
-        os_timer_arm(&totalTimeLimitTmr, 300, DO_NOT_REPEAT_T);
+        os_timer_arm(&totalTimeLimitTmr, 2000, DO_NOT_REPEAT_T);
     }
 #endif    
 }
