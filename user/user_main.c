@@ -10,7 +10,7 @@
 
 #define PROD_COMPILE
 #define DEV_152
-#define SLEEP_TIME 300000
+#define SLEEP_TIME 5000
 
 
 //#define SEND_SECURE
@@ -347,7 +347,7 @@ actualSleepAfterSend()
     DBG_TIME("e2eWiWrite %d us\n", wakup_end2 - wakup_end);
     
     deep_sleep_set_option( WAKE_WITHOUT_WIFI );//TODO: count before rf cal!!!
-    DEEP_SLEEP( SLEEP_TIME * 1000 ); 
+    DEEP_SLEEP( (SLEEP_TIME * 1000) - currentTotalDuration ); 
 }
 
 LOCAL void ICACHE_FLASH_ATTR
