@@ -191,6 +191,9 @@ void ICACHE_FLASH_ATTR
 user_rf_pre_init(void)
 {
     wifi_connect_start = system_get_time(); 
+    system_phy_set_powerup_option(2); // 2=calibrate VDD33 only (2ms)
+    system_phy_set_max_tpw(82); // 82: max TX power
+    
  #ifdef PROD_COMPILE
 //     system_uart_swap();
      system_set_os_print(0);
