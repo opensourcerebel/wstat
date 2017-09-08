@@ -326,7 +326,7 @@ nw_connect_cb(void *arg)
 #ifdef SEND_SECURE
     sint8 sentResult = espconn_secure_send(p_nwconn, data, os_strlen(data));
 #else    
-    sint8 sentResult = espconn_sent(p_nwconn, data, os_strlen(data));
+    sint8 sentResult = espconn_send(p_nwconn, data, os_strlen(data));
 #endif
     
     os_free(data);
@@ -361,7 +361,7 @@ actualSleepAfterSend()
     DBG_TIME("e2eWiTot %d ms\n", currentTotalDuration/1000);
     DBG_TIME("e2eWiWrite %d us\n", wakup_end2 - wakup_end);
     
-    deep_sleep_set_option( WAKE_WITHOUT_WIFI );//TODO: count before rf cal!!!
+    deep_sleep_set_option( WAKE_WITHOUT_WIFI );
     DEEP_SLEEP( (SLEEP_TIME * 1000) - currentTotalDuration ); 
 }
 
