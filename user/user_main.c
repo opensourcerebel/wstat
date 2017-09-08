@@ -122,7 +122,7 @@ struct {
   uint32_t counterCancelledIterations;
   uint32_t workingMode;
   uint32_t h;
-  int32_t t;//TODO: test with - temp
+  int32_t t;
   uint32_t p;
   uint32_t weatherReadingDuration;
   uint32_t originalResetReason;
@@ -204,6 +204,7 @@ user_rf_pre_init(void)
 LOCAL void ICACHE_FLASH_ATTR nw_connect_cb(void *arg);
 LOCAL void ICACHE_FLASH_ATTR nw_reconnect_cb(void *arg, int8_t errno);
 LOCAL void ICACHE_FLASH_ATTR nw_disconnect_cb(void *arg);
+LOCAL void ICACHE_FLASH_ATTR sleepAfterSend();
 
 static bool ipok = 0;
 static bool waitok = 0;
@@ -248,6 +249,11 @@ void sendDataGated()
 #else
         sint8 conStatus = espconn_connect(&nwconn);        
         DBG("Con status %d \n", conStatus);
+        if(conStatus != 0)
+        {
+            rtcData.counterCancelledIterations++;
+            sleepAfterSend();
+        }
 #endif
         
     }
@@ -286,7 +292,7 @@ nw_recv_cb(void *arg, char *data, unsigned short len)
     // Start a timer to close the connection
     os_timer_disarm(&nw_close_timer);
     os_timer_setfn(&nw_close_timer, nw_close_cb, arg);
-    os_timer_arm(&nw_close_timer, 100, 0);
+    os_timer_arm(&nw_close_timer, 1, 0);
 }
 
 /*
@@ -318,13 +324,19 @@ nw_connect_cb(void *arg)
     
     DBG("Sending: %s\n", data );
 #ifdef SEND_SECURE
-    espconn_secure_sent(p_nwconn, data, os_strlen(data));
+    sint8 sentResult = espconn_secure_send(p_nwconn, data, os_strlen(data));
 #else    
-    espconn_sent(p_nwconn, data, os_strlen(data));
+    sint8 sentResult = espconn_sent(p_nwconn, data, os_strlen(data));
 #endif
     
     os_free(data);
     os_free(url);
+    
+    if(sentResult != 0)
+    {
+        rtcData.counterCancelledIterations++;
+        sleepAfterSend();
+    }
 }
 
 LOCAL void ICACHE_FLASH_ATTR
@@ -361,25 +373,13 @@ sleepAfterSend()
     os_timer_arm(&sleepAfterSendTmr, 1, DO_NOT_REPEAT_T);
 }
 
-/*
- * Re-Connect callback. 
- * Do nothing?
- */
 LOCAL void ICACHE_FLASH_ATTR
 nw_reconnect_cb(void *arg, int8_t errno)
 {
-    //TODO: Server down => log error and sleep
     DBG("nw_reconnect_cb errno=%d, is server running, retry?\n", errno);
-    
-    struct espconn *p_nwconn = (struct espconn *)arg;
-    
     sleepAfterSend();
 }
 
-/*
- * Dis-Connect callback. 
- * Do nothing?
- */
 LOCAL void ICACHE_FLASH_ATTR
 nw_disconnect_cb(void *arg)
 {
@@ -463,7 +463,7 @@ fillPreviousSendDuration()
     rtcData.previousDisconnectDuration = 0;
     rtcData.workingMode = MODE_READ;
     rtcData.h = 0;
-    rtcData.t = 0;//TODO: test with - temp
+    rtcData.t = 0;
     rtcData.p = 0;
     rtcData.weatherReadingDuration = 0;
     rtcData.originalResetReason = 0;    
@@ -674,7 +674,7 @@ user_init(void)
     {
         os_timer_disarm(&totalTimeLimitTmr);
         os_timer_setfn(&totalTimeLimitTmr, totalTimeLimit,  NO_ARG);
-        os_timer_arm(&totalTimeLimitTmr, 2000, DO_NOT_REPEAT_T);
+        os_timer_arm(&totalTimeLimitTmr, 5000, DO_NOT_REPEAT_T);
     }
 #endif    
 }
