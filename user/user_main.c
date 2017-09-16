@@ -9,8 +9,9 @@
 #include "user_interface.h"
 
 #define PROD_COMPILE
-#define DEV_152
-#define SLEEP_TIME 5000
+#define DEV_234
+//#define SLEEP_TIME 5000
+#define SLEEP_TIME 120000
 
 
 //#define SEND_SECURE
@@ -47,6 +48,12 @@
 #define IP_SUFFIX 210
 #define FILE_RESULTS "results210.txt"
 #define CORRECTION -216//3328 2751
+#endif
+
+#ifdef DEV_234
+#define IP_SUFFIX 234
+#define FILE_RESULTS "results234.txt"
+#define CORRECTION -142//3328 2751
 #endif
 
 #define DO_NOT_REPEAT_T 0
@@ -496,9 +503,9 @@ readDataActual()
         rtcData.p = BME280_GetPressure();
         rtcData.h = BME280_GetHumidity();
 
-        //     DBG("Temp: %d.%d DegC, ", (int)(rtcData.t/100), (int)(rtcData.t%100));
-        //     DBG("Pres: %d.%d hPa, ", (int)(rtcData.p/100), (int)(rtcData.p%100));
-        //     DBG("Hum: %d.%d pct \r\n", (int)(rtcData.h/1024), (int)(rtcData.h%1024));
+             DBG("Temp: %d.%d DegC, ", (int)(rtcData.t/100), (int)(rtcData.t%100));
+             DBG("Pres: %d.%d hPa, ", (int)(rtcData.p/100), (int)(rtcData.p%100));
+             DBG("Hum: %d.%d pct \r\n", (int)(rtcData.h/1024), (int)(rtcData.h%1024));
     }
     else
     {
@@ -662,6 +669,10 @@ totalTimeLimit()
 void ICACHE_FLASH_ATTR
 user_init(void)
 {   
+//     char macaddr[6];
+//     wifi_get_macaddr(STATION_IF, macaddr);
+//     DBG("MAC:" MACSTR "\r\n", MAC2STR(macaddr));
+    
     struct rst_info *rtc_info = system_get_rst_info();
     resetReason = rtc_info->reason;
     
