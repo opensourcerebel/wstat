@@ -8,8 +8,8 @@
 
 #include "user_interface.h"
 
-#define PROD_COMPILE
-#define DEV_234
+#define DEV_COMPILE
+#define DEV_220
 //#define SLEEP_TIME 5000
 #define SLEEP_TIME 120000
 
@@ -48,6 +48,12 @@
 #define IP_SUFFIX 210
 #define FILE_RESULTS "results210.txt"
 #define CORRECTION -216//3328 2751
+#endif
+
+#ifdef DEV_220
+#define IP_SUFFIX 220
+#define FILE_RESULTS "results220.txt"
+#define CORRECTION -142//3328 2751
 #endif
 
 #ifdef DEV_234
@@ -669,9 +675,10 @@ totalTimeLimit()
 void ICACHE_FLASH_ATTR
 user_init(void)
 {   
-//     char macaddr[6];
-//     wifi_get_macaddr(STATION_IF, macaddr);
-//     DBG("MAC:" MACSTR "\r\n", MAC2STR(macaddr));
+#ifdef DEV_COMPILE    
+    char macaddr[6];
+    wifi_get_macaddr(STATION_IF, macaddr);
+    DBG("::::MAC:" MACSTR "\r\n", MAC2STR(macaddr));
     
     struct rst_info *rtc_info = system_get_rst_info();
     resetReason = rtc_info->reason;
@@ -679,6 +686,7 @@ user_init(void)
     wifi_set_event_handler_cb( wifi_callback );
     wakeup_start = system_get_time();    
     system_init_done_cb(system_operational);
+#endif     
     
 #ifdef START_TOTAL_TIME_LIMIT
     if(resetReason != HARDARE_RESET)
