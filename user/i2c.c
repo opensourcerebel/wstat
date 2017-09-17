@@ -161,6 +161,24 @@ i2c_check_ack(void)
     os_delay_us(I2C_SLEEP_TIME);
     i2c_sck(1);
     os_delay_us(I2C_SLEEP_TIME);
+    
+    
+//     int i=0;
+//     while(true)
+//     {
+//         i++;
+//         int j = 0;
+//         for( ;j < 20; j++)
+//         {
+//             os_delay_us(60000);
+//         }
+//         os_printf("i2c_clock_line_read:%d", i2c_clock_line_read());
+//         
+//         if(i > 60000)
+//         {
+//             break;
+//         }
+//     }
 
     //Get SDA pin status
     ack = i2c_read(); 

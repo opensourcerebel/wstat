@@ -41,7 +41,8 @@
 #define I2C_SCK_PIN 5
 #define I2C_SCK_FUNC FUNC_GPIO5
 
-#define i2c_read() GPIO_INPUT_GET(GPIO_ID_PIN(I2C_SDA_PIN)); 
+#define i2c_read()            GPIO_INPUT_GET(GPIO_ID_PIN(I2C_SDA_PIN)) 
+#define i2c_clock_line_read() GPIO_INPUT_GET(GPIO_ID_PIN(I2C_SCK_PIN))
 
 void i2c_init(void);
 void i2c_start(void);
