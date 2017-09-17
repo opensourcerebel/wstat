@@ -5,7 +5,7 @@
 #include "ip_addr.h"
 #include "espconn.h"
 #include "mem.h"
-#include "i2c_bme280.h"
+#include "i2c_chirp.h"
 
 #include "user_interface.h"
 
@@ -420,21 +420,21 @@ readDataActual()
     {
         if(rtcData.bmeInitOk)
         {
-            BME280_InitFromSleep(BME280_MODE_FORCED);
+            CHIRP_InitFromSleep(CHIRP_MODE_FORCED);
         }
     }
     else
     {
-        rtcData.bmeInitOk = BME280_Init(BME280_MODE_FORCED);
+        rtcData.bmeInitOk = CHIRP_Init(CHIRP_MODE_FORCED);
     }
     
     if(rtcData.bmeInitOk)
     {
-        BME280_readSensorData();
+        CHIRP_readSensorData();
 
-        rtcData.t = BME280_GetTemperature();
-        rtcData.p = BME280_GetPressure();
-        rtcData.h = BME280_GetHumidity();
+        rtcData.t = CHIRP_GetTemperature();
+        rtcData.p = CHIRP_GetPressure();
+        rtcData.h = CHIRP_GetHumidity();
 
         DBG("Temp: %d.%d DegC, ", (int)(rtcData.t/100), (int)(rtcData.t%100));
         DBG("Pres: %d.%d hPa, ", (int)(rtcData.p/100), (int)(rtcData.p%100));
@@ -442,7 +442,7 @@ readDataActual()
     }
     else
     {
-        DBG("BME280 init error.\r\n");
+        DBG("CHIRP init error.\r\n");
     }
   
     uint32_t wakup_end = system_get_time();
