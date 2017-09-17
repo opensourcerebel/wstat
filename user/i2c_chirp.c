@@ -87,8 +87,7 @@ bool ICACHE_FLASH_ATTR CHIRP_startI2cWrite(){
 bool ICACHE_FLASH_ATTR CHIRP_Init(uint8_t operationMode)
 {
     i2c_init();
-    printVersion();
-    return 0;
+    return printVersion();
 }
 
 void ICACHE_FLASH_ATTR CHIRP_InitFromSleep(uint8_t operationMode)

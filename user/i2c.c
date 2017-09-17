@@ -31,7 +31,31 @@ i2c_sda(uint8 state)
     state &= 0x01;
     //Set SDA line to state
     if (state)
+    {
         gpio_output_set(1 << I2C_SDA_PIN, 0, 1 << I2C_SDA_PIN, 0);
+        
+        uint8 clockLineState = i2c_clock_line_read();
+        //os_printf("C:%d\r\n", clockLineState);
+        // Clock stretching
+        int limit = 0;
+        while (clockLineState == 0)
+        {
+            //os_printf("T:%d\r\n", limit);
+            os_delay_us(1000);        
+            limit = limit + 1000;
+            if(limit >= 5000)
+            {
+                //os_printf("T:%d\r\n", limit);
+                break;
+//                 return 0;
+            }
+            clockLineState = i2c_clock_line_read();
+        }
+//         if(limit != 0)
+//         {
+//             os_printf("W:%d\r\n", limit);
+//         }
+    }
     else
         gpio_output_set(0, 1 << I2C_SDA_PIN, 1 << I2C_SDA_PIN, 0);
 }
