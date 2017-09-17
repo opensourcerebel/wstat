@@ -1,108 +1,13 @@
 #include "ets_sys.h"
 #include "osapi.h"
 #include "pass_router.h"
+#include "const.h"
 #include "ip_addr.h"
 #include "espconn.h"
 #include "mem.h"
 #include "i2c_bme280.h"
 
 #include "user_interface.h"
-
-#define DEV_COMPILE
-#define DEV_220
-//#define SLEEP_TIME 5000
-#define SLEEP_TIME 120000
-
-
-//#define SEND_SECURE
-
-#ifdef DEV_COMPILE
-#define DBG os_printf
-#define DBG_TIME os_printf
-#define DEEP_SLEEP system_deep_sleep
-#endif
-
-#ifdef PROD_COMPILE
-#define DBG 
-#define DBG_TIME 
-#define DEEP_SLEEP system_deep_sleep_instant
-#define START_TOTAL_TIME_LIMIT
-#endif
-
-
-#define IP_3 1
-
-#ifdef DEV_152
-#define IP_SUFFIX 152 
-#define FILE_RESULTS "results152.txt"
-#define CORRECTION -213 //3539-3328 //-211
-#endif
-
-#ifdef DEV_126
-#define IP_SUFFIX 126 
-#define FILE_RESULTS "results126.txt"
-#define CORRECTION -357 //3328 2751
-#endif
-
-#ifdef DEV_210
-#define IP_SUFFIX 210
-#define FILE_RESULTS "results210.txt"
-#define CORRECTION -216//3328 2751
-#endif
-
-#ifdef DEV_220
-#define IP_SUFFIX 220
-#define FILE_RESULTS "results220.txt"
-#define CORRECTION -142//3328 2751
-#endif
-
-#ifdef DEV_234
-#define IP_SUFFIX 234
-#define FILE_RESULTS "results234.txt"
-#define CORRECTION -142//3328 2751
-#endif
-
-#define DO_NOT_REPEAT_T 0
-#define NO_ARG  NULL
-
-#define DESIRED_AUTOCONNECT AUTOCONNECT_ON
-#define AUTOCONNECT_ON 1
-#define AUTOCONNECT_OFF 0
-
-#define DESIRED_WIFI_MODE WIFI_MODE_STATON
-#define WIFI_MODE_STATON 1
-#define WIFI_MODE_SOFT_AP 2
-#define WIFI_MODE_STATION_AND_SOFT_AP 3
-
-#define RTCMEMORYSTART 64
-#define MODE_SEND 100
-#define MODE_READ 200
-
-#define packet_size 2048
-
-#define DESIRED_WIFI_WAKE_MODE WAKE_WITH_WIFI_AND_DEF_CAL
-#define WAKE_WITH_WIFI_AND_DEF_CAL 0
-#define WAKE_WITH_WIFI_NO_CAL 2
-#define WAKE_WITHOUT_WIFI 4
-
-// enum	rst_reason	{
-// 	 REANSON_DEFAULT_RST	 =	0,	 //	normal	startup	by	power	on
-// 	 REANSON_WDT_RST	=	1,	 //	hardware	watch	dog	reset	exception	reset,	GPIO	status	won’t	change		
-// 	 REANSON_EXCEPTION_RST	 =	2,	 	 //	software	watch	dog	reset,	GPIO	status	won’t	change		
-// 	 REANSON_SOFT_WDT_RST	 =	3,	 	 //	software	restart	,system_restart	,	GPIO	status	won’t change
-// 	 REANSON_SOFT_RESTART	 =	4,	 	
-// 	 REANSON_DEEP_SLEEP_AWAKE=	5,				//	wake	up	from	deep-sleep	
-// 	 REANSON_EXT_SYS_RST	 =	6,	 //	external	system	reset
-// };
-//0 Power reboot Changed
-//1 Hardware WDT reset Changed
-//2 Fatal exception Unchanged
-//3 Software watchdog reset Unchanged
-//4 Software reset Unchanged
-//5 Deep-sleep Changed
-//6 Hardware reset Changed
-#define WAKE_FROM_DEEP_SLEEP 5
-#define HARDARE_RESET 6
 
 
 static struct espconn nwconn;
@@ -203,8 +108,20 @@ static void uart_ignore_char(char c)
 void ICACHE_FLASH_ATTR
 user_rf_pre_init(void)
 {
+    struct rst_info *rtc_info = system_get_rst_info();
+    resetReason = rtc_info->reason;
+    
     wifi_connect_start = system_get_time(); 
-    system_phy_set_powerup_option(2); // 2=calibrate VDD33 only (2ms)
+    if(resetReason == HARDARE_RESET)
+    {
+        //DBG("!FC");
+        system_phy_set_powerup_option(FULL_CALIBRATION);
+    }
+    else
+    {
+        //DBG("!MC");
+        system_phy_set_powerup_option(MIN_CALIBRATION);
+    }
     system_phy_set_max_tpw(82); // 82: max TX power
     
  #ifdef PROD_COMPILE
@@ -679,9 +596,6 @@ user_init(void)
     char macaddr[6];
     wifi_get_macaddr(STATION_IF, macaddr);
     DBG("::::MAC:" MACSTR "\r\n", MAC2STR(macaddr));
-    
-    struct rst_info *rtc_info = system_get_rst_info();
-    resetReason = rtc_info->reason;
     
     wifi_set_event_handler_cb( wifi_callback );
     wakeup_start = system_get_time();    
