@@ -2,7 +2,7 @@
 #define DEV_COMPILE
 #define DEV_220
 //#define SLEEP_TIME 5000
-#define SLEEP_TIME 5000
+#define SLEEP_TIME 6000
 
 
 //#define SEND_SECURE
@@ -21,7 +21,7 @@
 #endif
 
 
-#define IP_3 1
+#define IP_3 2
 
 #ifdef DEV_152
 #define IP_SUFFIX 152 
