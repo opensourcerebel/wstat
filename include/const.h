@@ -21,7 +21,7 @@
 #endif
 
 
-#define IP_3 2
+#define IP_3 1
 
 #ifdef DEV_152
 #define IP_SUFFIX 152 
