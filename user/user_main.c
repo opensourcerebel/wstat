@@ -420,25 +420,24 @@ readDataActual()
     {
         if(rtcData.bmeInitOk)
         {
-            CHIRP_InitFromSleep(CHIRP_MODE_FORCED);
+            CHIRP_InitFromSleep();
         }
     }
     else
     {
-        rtcData.bmeInitOk = CHIRP_Init(CHIRP_MODE_FORCED);
+        rtcData.bmeInitOk = CHIRP_Init();
     }
     
     if(rtcData.bmeInitOk)
     {
-        CHIRP_readSensorData();
+        rtcData.h = CHIRP_GetHumidityRaw();
+        rtcData.t = CHIRP_GetTemperatureRaw();
+        //rtcData.p = CHIRP_GetLightRaw();
+        CHIRP_Sleep();
 
-        rtcData.t = CHIRP_GetTemperature();
-        rtcData.p = CHIRP_GetPressure();
-        rtcData.h = CHIRP_GetHumidity();
-
-        DBG("Temp: %d.%d DegC, ", (int)(rtcData.t/100), (int)(rtcData.t%100));
-        DBG("Pres: %d.%d hPa, ", (int)(rtcData.p/100), (int)(rtcData.p%100));
-        DBG("Hum: %d.%d pct \r\n", (int)(rtcData.h/1024), (int)(rtcData.h%1024));
+        DBG("+++Temp: %d \r\n", rtcData.t);
+        //DBG("+++Light: %d\r\n", rtcData.p);
+        DBG("+++Hum: %d \r\n",rtcData.h);
     }
     else
     {
@@ -577,7 +576,7 @@ system_operational(void)
     {
         os_timer_disarm(&wait3sec);
         os_timer_setfn(&wait3sec, initialWait,  NO_ARG);
-        os_timer_arm(&wait3sec, 3000, DO_NOT_REPEAT_T);
+        os_timer_arm(&wait3sec, 1000, DO_NOT_REPEAT_T);
     }     
     else
     {

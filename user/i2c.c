@@ -22,6 +22,23 @@
 #include "gpio.h"
 #include "i2c.h"
 
+static unsigned char twi_sda = I2C_SDA_PIN;
+static unsigned char twi_scl = I2C_SCK_PIN;
+uint8_t esp8266_gpioToFn[16] = {0x34, 0x18, 0x38, 0x14, 0x3C, 0x40, 0x1C, 0x20, 0x24, 0x28, 0x2C, 0x30, 0x04, 0x08, 0x0C, 0x10};
+
+void ICACHE_FLASH_ATTR
+pinMode(uint8_t pin, uint8_t mode)
+{
+    if(mode == INPUT || mode == INPUT_PULLUP){
+      GPF(pin) = GPFFS(GPFFS_GPIO(pin));//Set mode to GPIO
+      GPEC = (1 << pin); //Disable
+      GPC(pin) = (GPC(pin) & (0xF << GPCI)) | (1 << GPCD); //SOURCE(GPIO) | DRIVER(OPEN_DRAIN) | INT_TYPE(UNCHANGED) | WAKEUP_ENABLE(DISABLED)
+      if(mode == INPUT_PULLUP) {
+          GPF(pin) |= (1 << GPFPU);  // Enable  Pullup
+      }
+    }
+}
+
 /**
  * Set SDA to state
  */
@@ -32,32 +49,14 @@ i2c_sda(uint8 state)
     //Set SDA line to state
     if (state)
     {
-        gpio_output_set(1 << I2C_SDA_PIN, 0, 1 << I2C_SDA_PIN, 0);
-        
-        uint8 clockLineState = i2c_clock_line_read();
-        //os_printf("C:%d\r\n", clockLineState);
-        // Clock stretching
-        int limit = 0;
-        while (clockLineState == 0)
-        {
-            //os_printf("T:%d\r\n", limit);
-            os_delay_us(1000);        
-            limit = limit + 1000;
-            if(limit >= 5000)
-            {
-                //os_printf("T:%d\r\n", limit);
-                break;
-//                 return 0;
-            }
-            clockLineState = i2c_clock_line_read();
-        }
-//         if(limit != 0)
-//         {
-//             os_printf("W:%d\r\n", limit);
-//         }
+        //gpio_output_set(1 << I2C_SDA_PIN,                0, 1 << I2C_SDA_PIN, 0);  
+        SDA_HIGH();
     }
     else
-        gpio_output_set(0, 1 << I2C_SDA_PIN, 1 << I2C_SDA_PIN, 0);
+    {
+        //gpio_output_set(               0, 1 << I2C_SDA_PIN, 1 << I2C_SDA_PIN, 0);
+        SDA_LOW();
+    }
 }
 
 /**
@@ -68,9 +67,37 @@ i2c_sck(uint8 state)
 {
     //Set SCK line to state
     if (state)
-        gpio_output_set(1 << I2C_SCK_PIN, 0, 1 << I2C_SCK_PIN, 0);
+    {
+        //gpio_output_set(1 << I2C_SCK_PIN,                0, 1 << I2C_SCK_PIN, 0);
+        SCL_HIGH();
+        uint8 clockLineState = SCL_READ();
+        //os_printf("C:%d\r\n", clockLineState);
+        // Clock stretching
+        int limit = 0;
+        while (clockLineState == 0)
+        {
+            //os_printf("T:%d\r\n", limit);
+            uint8 timeToDelay = 10;
+            os_delay_us(10);        
+            limit = limit + 10;
+            if(limit >= 2500)
+            {
+                //os_printf("T:%d\r\n", limit);
+                break;
+    //                 return 0;
+            }
+            clockLineState = SCL_READ();
+        }
+//         if(limit != 0)
+//         {
+//             os_printf("W:%d\r\n", limit);
+//         }
+    }
     else
-        gpio_output_set(0, 1 << I2C_SCK_PIN, 1 << I2C_SCK_PIN, 0);
+    {
+        //gpio_output_set(               0, 1 << I2C_SCK_PIN, 1 << I2C_SCK_PIN, 0);
+        SCL_LOW();
+    }
 }
 
 /**
@@ -80,34 +107,39 @@ i2c_sck(uint8 state)
 void ICACHE_FLASH_ATTR
 i2c_init(void)
 {
-    //Disable interrupts
+//     //Disable interrupts
+//     ETS_GPIO_INTR_DISABLE();
+// 
+//     //Set pin functions
+//     PIN_FUNC_SELECT(I2C_SDA_MUX, I2C_SDA_FUNC);
+//     PIN_FUNC_SELECT(I2C_SCK_MUX, I2C_SCK_FUNC);
+// 
+//     //Set SDA as open drain
+//     GPIO_REG_WRITE(
+//         GPIO_PIN_ADDR(GPIO_ID_PIN(I2C_SDA_PIN)), 
+//         GPIO_REG_READ(GPIO_PIN_ADDR(GPIO_ID_PIN(I2C_SDA_PIN))) | 
+//         GPIO_PIN_PAD_DRIVER_SET(GPIO_PAD_DRIVER_ENABLE)
+//     );
+// 
+//     GPIO_REG_WRITE(GPIO_ENABLE_ADDRESS, GPIO_REG_READ(GPIO_ENABLE_ADDRESS) | (1 << I2C_SDA_PIN));
+// 
+//     //Set SCK as open drain
+//     GPIO_REG_WRITE(
+//         GPIO_PIN_ADDR(GPIO_ID_PIN(I2C_SCK_PIN)), 
+//         GPIO_REG_READ(GPIO_PIN_ADDR(GPIO_ID_PIN(I2C_SCK_PIN))) | 
+//         GPIO_PIN_PAD_DRIVER_SET(GPIO_PAD_DRIVER_ENABLE)
+//     );
+// 
+//     GPIO_REG_WRITE(GPIO_ENABLE_ADDRESS, GPIO_REG_READ(GPIO_ENABLE_ADDRESS) | (1 << I2C_SCK_PIN));
+// 
+//     //Turn interrupt back on
+//     ETS_GPIO_INTR_ENABLE();
+    
     ETS_GPIO_INTR_DISABLE();
-
-    //Set pin functions
-    PIN_FUNC_SELECT(I2C_SDA_MUX, I2C_SDA_FUNC);
-    PIN_FUNC_SELECT(I2C_SCK_MUX, I2C_SCK_FUNC);
-
-    //Set SDA as open drain
-    GPIO_REG_WRITE(
-        GPIO_PIN_ADDR(GPIO_ID_PIN(I2C_SDA_PIN)), 
-        GPIO_REG_READ(GPIO_PIN_ADDR(GPIO_ID_PIN(I2C_SDA_PIN))) | 
-        GPIO_PIN_PAD_DRIVER_SET(GPIO_PAD_DRIVER_ENABLE)
-    );
-
-    GPIO_REG_WRITE(GPIO_ENABLE_ADDRESS, GPIO_REG_READ(GPIO_ENABLE_ADDRESS) | (1 << I2C_SDA_PIN));
-
-    //Set SCK as open drain
-    GPIO_REG_WRITE(
-        GPIO_PIN_ADDR(GPIO_ID_PIN(I2C_SCK_PIN)), 
-        GPIO_REG_READ(GPIO_PIN_ADDR(GPIO_ID_PIN(I2C_SCK_PIN))) | 
-        GPIO_PIN_PAD_DRIVER_SET(GPIO_PAD_DRIVER_ENABLE)
-    );
-
-    GPIO_REG_WRITE(GPIO_ENABLE_ADDRESS, GPIO_REG_READ(GPIO_ENABLE_ADDRESS) | (1 << I2C_SCK_PIN));
-
-    //Turn interrupt back on
+    pinMode(twi_sda, INPUT_PULLUP);
+    pinMode(twi_scl, INPUT_PULLUP);
     ETS_GPIO_INTR_ENABLE();
-
+    
     i2c_sda(1);
     i2c_sck(1);
     return;
