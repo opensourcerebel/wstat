@@ -292,7 +292,17 @@ actualSleepAfterSend()
     DBG_TIME("e2eWiWrite %d us\n", wakup_end2 - wakup_end);
     
     deep_sleep_set_option( WAKE_WITHOUT_WIFI );
-    DEEP_SLEEP( (SLEEP_TIME * 1000) - currentTotalDuration ); 
+    uint64 desiredSleep = SLEEP_TIME * 1000;
+    if(desiredSleep > currentTotalDuration)
+    {
+        //lower the sleep time
+        DEEP_SLEEP((SLEEP_TIME * 1000) - currentTotalDuration); 
+    }
+    else
+    {
+        //do not sleep as the current run took too much time
+        DEEP_SLEEP(0); 
+    }
 }
 
 LOCAL void ICACHE_FLASH_ATTR
@@ -444,7 +454,7 @@ readDataActual()
     DBG_TIME("e2eWe %d\n", rtcData.weatherReadingDuration / 1000);
     
     deep_sleep_set_option( DESIRED_WIFI_WAKE_MODE );
-    DEEP_SLEEP( 10 ); 
+    DEEP_SLEEP(1); 
 }
 
 #define WEATHER_READ_IN_MS 110
