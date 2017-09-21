@@ -293,15 +293,15 @@ actualSleepAfterSend()
     
     deep_sleep_set_option( WAKE_WITHOUT_WIFI );
     uint64 desiredSleep = SLEEP_TIME * 1000;
-    if(desiredSleep > currentTotalDuration)
+    if(desiredSleep + SLEEP_TIME_MIN > currentTotalDuration)
     {
         //lower the sleep time
-        DEEP_SLEEP((SLEEP_TIME * 1000) - currentTotalDuration); 
+        DEEP_SLEEP(desiredSleep - currentTotalDuration); 
     }
     else
     {
         //do not sleep as the current run took too much time
-        DEEP_SLEEP(0); 
+        DEEP_SLEEP(SLEEP_TIME_MIN); 
     }
 }
 
@@ -436,9 +436,9 @@ readDataActual()
         rtcData.p = BME280_GetPressure();
         rtcData.h = BME280_GetHumidity();
 
-             DBG("Temp: %d.%d DegC, ", (int)(rtcData.t/100), (int)(rtcData.t%100));
-             DBG("Pres: %d.%d hPa, ", (int)(rtcData.p/100), (int)(rtcData.p%100));
-             DBG("Hum: %d.%d pct \r\n", (int)(rtcData.h/1024), (int)(rtcData.h%1024));
+        DBG("Temp: %d.%d DegC, ", (int)(rtcData.t/100), (int)(rtcData.t%100));
+        DBG("Pres: %d.%d hPa, ", (int)(rtcData.p/100), (int)(rtcData.p%100));
+        DBG("Hum: %d.%d pct \r\n", (int)(rtcData.h/1024), (int)(rtcData.h%1024));
     }
     else
     {
@@ -454,7 +454,7 @@ readDataActual()
     DBG_TIME("e2eWe %d\n", rtcData.weatherReadingDuration / 1000);
     
     deep_sleep_set_option( DESIRED_WIFI_WAKE_MODE );
-    DEEP_SLEEP(1); 
+    DEEP_SLEEP(SLEEP_TIME_MIN); 
 }
 
 #define WEATHER_READ_IN_MS 110
@@ -606,11 +606,11 @@ user_init(void)
     char macaddr[6];
     wifi_get_macaddr(STATION_IF, macaddr);
     DBG("::::MAC:" MACSTR "\r\n", MAC2STR(macaddr));
-    
+#endif 
     wifi_set_event_handler_cb( wifi_callback );
     wakeup_start = system_get_time();    
     system_init_done_cb(system_operational);
-#endif     
+    
     
 #ifdef START_TOTAL_TIME_LIMIT
     if(resetReason != HARDARE_RESET)
