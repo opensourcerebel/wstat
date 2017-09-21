@@ -10,8 +10,10 @@
 //0x40 = 0b1000000 write
 //0x41 = 0b1000001 read
 
-#define CHIRP_W					0x40
-#define CHIRP_R					0x41
+//0b101
+
+#define CHIRP_W					0xA//0x40
+#define CHIRP_R					0xB//0x41
 
 #define CHIRP_DEBUG 1 //uncomment for debugging messages
 

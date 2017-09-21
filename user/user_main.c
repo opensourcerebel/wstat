@@ -435,9 +435,11 @@ readDataActual()
         //rtcData.p = CHIRP_GetLightRaw();
         CHIRP_Sleep();
 
+        CHIRP_Sleep();
+
         DBG("+++Temp: %d \r\n", rtcData.t);
-        //DBG("+++Light: %d\r\n", rtcData.p);
         DBG("+++Hum: %d \r\n",rtcData.h);
+        //         DBG("+++Light: %d\r\n", rtcData.p);
     }
     else
     {
@@ -445,7 +447,7 @@ readDataActual()
     }
   
     uint32_t wakup_end = system_get_time();
-    rtcData.workingMode = MODE_SEND;
+    rtcData.workingMode = MODE_READ;
     rtcData.originalResetReason = resetReason;   
     rtcData.weatherReadingDuration = wakup_end - wakeup_start;
 
@@ -601,11 +603,14 @@ totalTimeLimit()
 void ICACHE_FLASH_ATTR
 user_init(void)
 {   
+<<<<<<< 3a29ce7fc62c5ad2b420f463039196f6c5159b32
 #ifdef DEV_COMPILE    
     char macaddr[6];
     wifi_get_macaddr(STATION_IF, macaddr);
     DBG("::::MAC:" MACSTR "\r\n", MAC2STR(macaddr));
 #endif 
+=======
+>>>>>>> working read
     wifi_set_event_handler_cb( wifi_callback );
     wakeup_start = system_get_time();    
     system_init_done_cb(system_operational);

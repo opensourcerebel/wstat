@@ -2,8 +2,12 @@
 #define DEV_COMPILE
 #define DEV_210
 //#define SLEEP_TIME 5000
+<<<<<<< 3a29ce7fc62c5ad2b420f463039196f6c5159b32
 #define SLEEP_TIME_MIN 10 //MINIMUM SLEP TIME is 10 otherwise hangs
 #define SLEEP_TIME 60000
+=======
+#define SLEEP_TIME 600000
+>>>>>>> working read
 
 
 //#define SEND_SECURE

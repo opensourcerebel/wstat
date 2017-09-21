@@ -82,7 +82,7 @@ i2c_sck(uint8 state)
             limit = limit + 10;
             if(limit >= 2500)
             {
-                //os_printf("T:%d\r\n", limit);
+                os_printf("T:%d\r\n", limit);
                 break;
     //                 return 0;
             }
