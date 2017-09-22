@@ -433,7 +433,6 @@ readDataActual()
         rtcData.h = CHIRP_GetHumidityRaw();
         rtcData.t = CHIRP_GetTemperatureRaw();
         //rtcData.p = CHIRP_GetLightRaw();
-        CHIRP_Sleep();
 
         CHIRP_Sleep();
 
@@ -447,7 +446,7 @@ readDataActual()
     }
   
     uint32_t wakup_end = system_get_time();
-    rtcData.workingMode = MODE_READ;
+    rtcData.workingMode = MODE_SEND;
     rtcData.originalResetReason = resetReason;   
     rtcData.weatherReadingDuration = wakup_end - wakeup_start;
 
