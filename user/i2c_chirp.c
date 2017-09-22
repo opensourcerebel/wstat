@@ -203,7 +203,14 @@ uint16_t ICACHE_FLASH_ATTR CHIRP_GetTemperatureRaw(){
 #ifdef CHIRP_DEBUG    
     os_printf("CHIRP_GetTemperatureRaw\r\n");
 #endif
-        
+    readTwoBytes(SOILMOISTURESENSOR_GET_TEMPERATURE);
+    //int waiting = 0;
+    while (isBusy()) //wait untill ready
+    {
+        os_delay_us(1000);
+        //waiting = waiting + 1000;
+    }
+    ///os_printf("++WW%d\r\n", waiting);
     return readTwoBytes(SOILMOISTURESENSOR_GET_TEMPERATURE);
 }
 
@@ -212,13 +219,13 @@ uint16_t ICACHE_FLASH_ATTR CHIRP_GetLightRaw(){
     os_printf("CHIRP_GetLightRaw\r\n");
 #endif     
     CHIRP_sendI2cWriteData1(SOILMOISTURESENSOR_MEASURE_LIGHT);
-    int waiting = 0;
+    //int waiting = 0;
     while (isBusy()) 
     {
         os_delay_us(1000);
-        waiting = waiting + 1000;
+        //waiting = waiting + 1000;
     }
-    os_printf("++WW%d\r\n", waiting);
+    //os_printf("++WW%d\r\n", waiting);
 
     return readTwoBytes(SOILMOISTURESENSOR_MEASURE_LIGHT); 
 	
@@ -227,10 +234,15 @@ uint16_t ICACHE_FLASH_ATTR CHIRP_GetLightRaw(){
 uint16_t ICACHE_FLASH_ATTR CHIRP_GetHumidityRaw(){
 #ifdef CHIRP_DEBUG    
         os_printf("CHIRP_GetHumidityRaw\r\n");
-#endif        
-//     while (isBusy()) 
-//     {
-//         os_delay_us(1000);
-//     }
+#endif  
+    // returns the old register and start a new measurement
+    readTwoBytes(SOILMOISTURESENSOR_GET_CAPACITANCE); 
+    //int waiting = 0;
+    while (isBusy()) //wait untill ready
+    {
+        os_delay_us(1000);
+        //waiting = waiting + 1000;
+    }
+    //os_printf("++WW%d\r\n", waiting);
     return readTwoBytes(SOILMOISTURESENSOR_GET_CAPACITANCE);
 }
