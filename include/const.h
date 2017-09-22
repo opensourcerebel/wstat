@@ -3,7 +3,7 @@
 #define DEV_152
 //#define SLEEP_TIME 5000
 #define SLEEP_TIME_MIN 10 //MINIMUM SLEP TIME is 10 otherwise hangs
-#define SLEEP_TIME SLEEP_TIME_MIN
+#define SLEEP_TIME 60000
 
 
 //#define SEND_SECURE
