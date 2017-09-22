@@ -602,14 +602,6 @@ totalTimeLimit()
 void ICACHE_FLASH_ATTR
 user_init(void)
 {   
-<<<<<<< 3a29ce7fc62c5ad2b420f463039196f6c5159b32
-#ifdef DEV_COMPILE    
-    char macaddr[6];
-    wifi_get_macaddr(STATION_IF, macaddr);
-    DBG("::::MAC:" MACSTR "\r\n", MAC2STR(macaddr));
-#endif 
-=======
->>>>>>> working read
     wifi_set_event_handler_cb( wifi_callback );
     wakeup_start = system_get_time();    
     system_init_done_cb(system_operational);
