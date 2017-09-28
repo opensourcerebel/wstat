@@ -5,7 +5,7 @@ void ICACHE_FLASH_ATTR setup()
     twi_init(I2C_SDA_PIN, I2C_SCK_PIN);
 }
 
-void writeI2CRegister8bit(int addr, int value) {
+void ICACHE_FLASH_ATTR writeI2CRegister8bit(int addr, int value) {
   beginTransmission(addr);
   writeT(value);
   int stat = endTransmission();
@@ -15,7 +15,21 @@ void writeI2CRegister8bit(int addr, int value) {
   }
 }
 
-unsigned int readI2CRegister16bit(int addr, int reg) {
+uint8_t readI2CRegister8bit(int addr, int reg) {
+  beginTransmission(addr);
+  writeT(reg);
+  int stat = endTransmission();
+
+  if (stat != 0)
+  {
+    //Serial.printf("read:%d, %d, %d\r\n", addr, reg, stat);
+  }
+
+  requestFrom(addr, 1);
+  return readT();
+}
+
+unsigned int ICACHE_FLASH_ATTR readI2CRegister16bit(int addr, int reg) {
   beginTransmission(addr);
   writeT(reg);
   int stat = endTransmission();

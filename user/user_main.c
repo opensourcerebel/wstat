@@ -433,11 +433,30 @@ readDataActual()
     if(rtcData.bmeInitOk)
     {
         readI2CRegister16bit(DEVICE_ADDR, 0);
-        rtcData.h = CHIRP_GetHumidityRaw();
-        rtcData.t = CHIRP_GetTemperatureRaw();
+//         rtcData.h = CHIRP_GetHumidityRaw();
+//         rtcData.t = CHIRP_GetTemperatureRaw();
         //rtcData.p = CHIRP_GetLightRaw();
 
-        CHIRP_Sleep();
+//         CHIRP_Sleep();
+        
+        int status = 1;
+        int counter = 0;
+        do
+        {
+            status = readI2CRegister8bit(DEVICE_ADDR, 0x09);
+            os_delay_us(1000);
+            counter++;
+        } while (status != 0);
+
+        if (counter > 1)
+        {
+            DBG("BusyC:%d", counter);
+        }
+
+        rtcData.h = readI2CRegister16bit(DEVICE_ADDR, 0);
+        rtcData.t = readI2CRegister16bit(DEVICE_ADDR, 5);
+        
+        writeI2CRegister8bit(DEVICE_ADDR, 0x08); //sleep
 
         DBG("+++Temp: %d \r\n", rtcData.t);
         DBG("+++Hum: %d \r\n",rtcData.h);
