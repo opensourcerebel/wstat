@@ -41,3 +41,4 @@ void ICACHE_FLASH_ATTR pinMode(uint8_t pin, uint8_t mode);
 void ICACHE_FLASH_ATTR twi_setClock(unsigned int freq);
 void ICACHE_FLASH_ATTR twi_setClockStretchLimit(uint32_t limit);
 void ICACHE_FLASH_ATTR beginTransmission(uint8_t address);
+size_t ICACHE_FLASH_ATTR write(uint8_t data);

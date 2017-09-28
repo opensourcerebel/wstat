@@ -72,3 +72,19 @@ void ICACHE_FLASH_ATTR beginTransmission(uint8_t address)
   txBufferLength = 0;
 }
 
+size_t ICACHE_FLASH_ATTR write(uint8_t data)
+{
+  if(transmitting){
+    if(txBufferLength >= BUFFER_LENGTH){
+      setWriteError();
+      return 0;
+    }
+    txBuffer[txBufferIndex] = data;
+    ++txBufferIndex;
+    txBufferLength = txBufferIndex;
+  } else {
+    // i2c_slave_transmit(&data, 1);
+  }
+  return 1;
+}
+
