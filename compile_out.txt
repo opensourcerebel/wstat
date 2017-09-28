@@ -1,0 +1,130 @@
+make[1]: Entering directory '/home/xxx/ESP8266_NONOS_SDK-2.1.0/wsta/user'
+DEPEND: xtensa-lx106-elf-gcc -M -Os -g -Wpointer-arith -Wundef -Werror -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals -ffunction-sections -fdata-sections -fno-builtin-printf -DICACHE_FLASH -I include -I ./ -I ../../include/ets -I ../include -I ../../include -I ../../include/eagle -I ../../driver_lib/include Wire.c
+DEPEND: xtensa-lx106-elf-gcc -M -Os -g -Wpointer-arith -Wundef -Werror -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals -ffunction-sections -fdata-sections -fno-builtin-printf -DICACHE_FLASH -I include -I ./ -I ../../include/ets -I ../include -I ../../include -I ../../include/eagle -I ../../driver_lib/include I2CSoilMoistureSensor.c
+xtensa-lx106-elf-gcc -Os -g -Wpointer-arith -Wundef -Werror -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals -ffunction-sections -fdata-sections -fno-builtin-printf  -DICACHE_FLASH   -I include -I ./ -I ../../include/ets -I ../include -I ../../include -I ../../include/eagle -I ../../driver_lib/include  -o .output/eagle/debug/obj/I2CSoilMoistureSensor.o -c I2CSoilMoistureSensor.c
+In file included from I2CSoilMoistureSensor.c:15:0:
+../include/Wire.h:61:10: error: conflicting types for 'beginTransmission'
+     void beginTransmission(int);
+          ^
+../include/Wire.h:60:10: note: previous declaration of 'beginTransmission' was here
+     void beginTransmission(uint8_t);
+          ^
+../include/Wire.h:63:13: error: conflicting types for 'endTransmission'
+     uint8_t endTransmission(uint8_t);
+             ^
+../include/Wire.h:62:13: note: previous declaration of 'endTransmission' was here
+     uint8_t endTransmission(void);
+             ^
+../include/Wire.h:67:13: error: conflicting types for 'requestFrom'
+     uint8_t requestFrom(uint8_t, uint8_t);
+             ^
+../include/Wire.h:64:12: note: previous declaration of 'requestFrom' was here
+     size_t requestFrom(uint8_t address, size_t size, bool sendStop);
+            ^
+../include/Wire.h:68:13: error: conflicting types for 'requestFrom'
+     uint8_t requestFrom(uint8_t, uint8_t, uint8_t);
+             ^
+../include/Wire.h:64:12: note: previous declaration of 'requestFrom' was here
+     size_t requestFrom(uint8_t address, size_t size, bool sendStop);
+            ^
+../include/Wire.h:69:13: error: conflicting types for 'requestFrom'
+     uint8_t requestFrom(int, int);
+             ^
+../include/Wire.h:64:12: note: previous declaration of 'requestFrom' was here
+     size_t requestFrom(uint8_t address, size_t size, bool sendStop);
+            ^
+../include/Wire.h:70:13: error: conflicting types for 'requestFrom'
+     uint8_t requestFrom(int, int, int);
+             ^
+../include/Wire.h:64:12: note: previous declaration of 'requestFrom' was here
+     size_t requestFrom(uint8_t address, size_t size, bool sendStop);
+            ^
+../include/Wire.h:72:5: error: unknown type name 'virtual'
+     virtual size_t write(uint8_t);
+     ^
+../include/Wire.h:72:20: error: expected '=', ',', ';', 'asm' or '__attribute__' before 'write'
+     virtual size_t write(uint8_t);
+                    ^
+../include/Wire.h:73:5: error: unknown type name 'virtual'
+     virtual size_t write(const uint8_t *, size_t);
+     ^
+../include/Wire.h:73:20: error: expected '=', ',', ';', 'asm' or '__attribute__' before 'write'
+     virtual size_t write(const uint8_t *, size_t);
+                    ^
+../include/Wire.h:74:13: error: expected '=', ',', ';', 'asm' or '__attribute__' before 'int'
+     virtual int available(void);
+             ^
+../include/Wire.h:75:13: error: expected '=', ',', ';', 'asm' or '__attribute__' before 'int'
+     virtual int read(void);
+             ^
+../include/Wire.h:76:13: error: expected '=', ',', ';', 'asm' or '__attribute__' before 'int'
+     virtual int peek(void);
+             ^
+../include/Wire.h:77:13: error: expected '=', ',', ';', 'asm' or '__attribute__' before 'void'
+     virtual void flush(void);
+             ^
+../include/Wire.h:82:19: error: conflicting types for 'write'
+     inline size_t write(long n) { return write((uint8_t)n); }
+                   ^
+../include/Wire.h:81:19: note: previous definition of 'write' was here
+     inline size_t write(unsigned long n) { return write((uint8_t)n); }
+                   ^
+../include/Wire.h:83:19: error: conflicting types for 'write'
+     inline size_t write(unsigned int n) { return write((uint8_t)n); }
+                   ^
+../include/Wire.h:81:19: note: previous definition of 'write' was here
+     inline size_t write(unsigned long n) { return write((uint8_t)n); }
+                   ^
+../include/Wire.h:84:19: error: conflicting types for 'write'
+     inline size_t write(int n) { return write((uint8_t)n); }
+                   ^
+../include/Wire.h:81:19: note: previous definition of 'write' was here
+     inline size_t write(unsigned long n) { return write((uint8_t)n); }
+                   ^
+I2CSoilMoistureSensor.c: In function 'setAddress':
+I2CSoilMoistureSensor.c:57:3: error: too many arguments to function 'writeI2CRegister8bit'
+   writeI2CRegister8bit(sensorAddress, SOILMOISTURESENSOR_SET_ADDRESS, addr);
+   ^
+In file included from I2CSoilMoistureSensor.c:12:0:
+../include/I2CSoilMoistureSensor.h:61:14: note: declared here
+         void writeI2CRegister8bit(int addr, int value);
+              ^
+I2CSoilMoistureSensor.c: In function 'writeI2CRegister8bit':
+I2CSoilMoistureSensor.c:18:30: error: 'Wire' undeclared (first use in this function)
+ #define i2cBeginTransmission Wire.beginTransmission
+                              ^
+I2CSoilMoistureSensor.c:155:3: note: in expansion of macro 'i2cBeginTransmission'
+   i2cBeginTransmission(addr);
+   ^
+I2CSoilMoistureSensor.c:18:30: note: each undeclared identifier is reported only once for each function it appears in
+ #define i2cBeginTransmission Wire.beginTransmission
+                              ^
+I2CSoilMoistureSensor.c:155:3: note: in expansion of macro 'i2cBeginTransmission'
+   i2cBeginTransmission(addr);
+   ^
+I2CSoilMoistureSensor.c: In function 'writeI2CRegister8bitV':
+I2CSoilMoistureSensor.c:18:30: error: 'Wire' undeclared (first use in this function)
+ #define i2cBeginTransmission Wire.beginTransmission
+                              ^
+I2CSoilMoistureSensor.c:165:3: note: in expansion of macro 'i2cBeginTransmission'
+   i2cBeginTransmission(addr);
+   ^
+I2CSoilMoistureSensor.c: At top level:
+I2CSoilMoistureSensor.c:174:68: error: unknown type name 'byte'
+ uint16_t  ICACHE_FLASH_ATTR readI2CRegister16bitUnsigned(int addr, byte reg)
+                                                                    ^
+I2CSoilMoistureSensor.c:192:64: error: unknown type name 'byte'
+ int16_t ICACHE_FLASH_ATTR readI2CRegister16bitSigned(int addr, byte reg)
+                                                                ^
+I2CSoilMoistureSensor.c: In function 'readI2CRegister8bit':
+I2CSoilMoistureSensor.c:18:30: error: 'Wire' undeclared (first use in this function)
+ #define i2cBeginTransmission Wire.beginTransmission
+                              ^
+I2CSoilMoistureSensor.c:201:3: note: in expansion of macro 'i2cBeginTransmission'
+   i2cBeginTransmission(addr);
+   ^
+../../Makefile:339: recipe for target '.output/eagle/debug/obj/I2CSoilMoistureSensor.o' failed
+make[1]: *** [.output/eagle/debug/obj/I2CSoilMoistureSensor.o] Error 1
+make[1]: Leaving directory '/home/xxx/ESP8266_NONOS_SDK-2.1.0/wsta/user'
+../Makefile:325: recipe for target '.subdirs' failed
+make: *** [.subdirs] Error 2

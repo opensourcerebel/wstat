@@ -5,7 +5,7 @@
 #include "ip_addr.h"
 #include "espconn.h"
 #include "mem.h"
-#include "i2c_chirp.h"
+#include "mywire.h"
 
 #include "user_interface.h"
 
