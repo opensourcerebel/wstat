@@ -6,6 +6,7 @@ static unsigned char twi_dcount = 18;
 static uint32_t twi_clockStretchLimit;
 uint8_t esp8266_gpioToFn[16] = {0x34, 0x18, 0x38, 0x14, 0x3C, 0x40, 0x1C, 0x20, 0x24, 0x28, 0x2C, 0x30, 0x04, 0x08, 0x0C, 0x10};
 
+uint8_t transmitting = 0;
 uint8_t rxBuffer[BUFFER_LENGTH];
 uint8_t rxBufferIndex = 0;
 uint8_t rxBufferLength = 0;
@@ -62,3 +63,12 @@ void ICACHE_FLASH_ATTR  flush(){
   txBufferIndex = 0;
   txBufferLength = 0;
 }
+
+void ICACHE_FLASH_ATTR beginTransmission(uint8_t address)
+{
+  transmitting = 1;
+  txAddress = address;
+  txBufferIndex = 0;
+  txBufferLength = 0;
+}
+
