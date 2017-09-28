@@ -413,6 +413,8 @@ fillPreviousSendDuration()
   DBG("Working mode %d\n", rtcData.workingMode);
 }
 
+#define DEVICE_ADDR 0x01
+
 LOCAL void ICACHE_FLASH_ATTR
 readDataActual()
 {   
@@ -420,16 +422,17 @@ readDataActual()
     {
         if(rtcData.bmeInitOk)
         {
-            CHIRP_InitFromSleep();
+            //CHIRP_InitFromSleep();
         }
     }
     else
     {
-        rtcData.bmeInitOk = CHIRP_Init();
+        rtcData.bmeInitOk = true;
     }
     
     if(rtcData.bmeInitOk)
     {
+        readI2CRegister16bit(DEVICE_ADDR, 0);
         rtcData.h = CHIRP_GetHumidityRaw();
         rtcData.t = CHIRP_GetTemperatureRaw();
         //rtcData.p = CHIRP_GetLightRaw();
