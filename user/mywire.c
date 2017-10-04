@@ -1,6 +1,7 @@
 #include "twi.h"
+#include "const.h"
 
-void ICACHE_FLASH_ATTR setup()
+void ICACHE_FLASH_ATTR setupWire()
 {
     twi_init(I2C_SDA_PIN, I2C_SCK_PIN);
 }
@@ -11,7 +12,7 @@ void ICACHE_FLASH_ATTR writeI2CRegister8bit(int addr, int value) {
   int stat = endTransmission();
   if (stat != 0)
   {
-    //Serial.printf("write:%d, %d, %d\r\n", addr, value, stat);
+    DBG("write:%d, %d, %d\r\n", addr, value, stat);
   }
 }
 
@@ -22,7 +23,7 @@ uint8_t readI2CRegister8bit(int addr, int reg) {
 
   if (stat != 0)
   {
-    //Serial.printf("read:%d, %d, %d\r\n", addr, reg, stat);
+    DBG("read:%d, %d, %d\r\n", addr, reg, stat);
   }
 
   requestFrom(addr, 1);
@@ -36,7 +37,7 @@ unsigned int ICACHE_FLASH_ATTR readI2CRegister16bit(int addr, int reg) {
 
   if (stat != 0)
   {
-    //Serial.printf("read2:%d, %d, %d\r\n", addr, reg, stat);
+    DBG("read2:%d, %d, %d\r\n", addr, reg, stat);
   }
 
   requestFrom(addr, 2);

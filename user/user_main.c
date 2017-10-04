@@ -284,14 +284,18 @@ actualSleepAfterSend()
     system_rtc_mem_write(RTCMEMORYSTART, &rtcData, sizeof(rtcData));
     
     uint32_t wakup_end2 = system_get_time();
-    DBG_TIME("e2eWiAttach %d ms\n", wifiConnectionDuration/1000);            
-    DBG_TIME("e2eWiSend %d ms\n", currentSendingDuration/1000);
-    DBG_TIME("e2eWiDisc+Write %d ms\n", currentDisconnectDuration/1000);
-    DBG_TIME("e2eWiTot %d ms\n", currentTotalDuration/1000);
-    DBG_TIME("e2eWiWrite %d us\n", wakup_end2 - wakup_end);
+//     DBG_TIME("e2eWiAttach %d ms\n", wifiConnectionDuration/1000);            
+//     DBG_TIME("e2eWiSend %d ms\n", currentSendingDuration/1000);
+//     DBG_TIME("e2eWiDisc+Write %d ms\n", currentDisconnectDuration/1000);
+//     DBG_TIME("e2eWiTot %d ms\n", currentTotalDuration/1000);
+//     DBG_TIME("e2eWiWrite %d us\n", wakup_end2 - wakup_end);
+    DBG("+++CounE: %d \r\n", rtcData.p);
+    DBG("+++Count: %d \r\n", rtcData.counterIterations);
+    DBG("+++Temp: %d \r\n", rtcData.t);
+    DBG("+++Hum: %d \r\n",rtcData.h);
     
     deep_sleep_set_option( WAKE_WITHOUT_WIFI );
-    uint64 desiredSleep = SLEEP_TIME * 1000;
+    uint64_t desiredSleep = SLEEP_TIME;
     if(desiredSleep + SLEEP_TIME_MIN > currentTotalDuration)
     {
         //lower the sleep time
@@ -415,6 +419,7 @@ fillPreviousSendDuration()
 LOCAL void ICACHE_FLASH_ATTR
 readDataActual()
 {   
+    setupWire();
     if(resetReason == WAKE_FROM_DEEP_SLEEP)
     {
         if(rtcData.bmeInitOk)
@@ -424,15 +429,28 @@ readDataActual()
     }
     else
     {
-        rtcData.bmeInitOk = soilCheck();
+        rtcData.bmeInitOk = true;//soilCheck();
+        //soilReset();
     }
     
     if(rtcData.bmeInitOk)
     {
         rtcData.h = soilGetCap();
         rtcData.t = soilGetTemp();
-        soilSleep();
+        if(rtcData.h == 0 && rtcData.t == 0)
+        {
+            rtcData.p = rtcData.p + 1;
+            soilReset();
+            rtcData.h = soilGetCap();
+            rtcData.t = soilGetTemp();            
+        }
+        else
+        {
+            soilSleep();
+        }
 
+        DBG("+++CounE: %d \r\n", rtcData.p);
+        DBG("+++Coun: %d \r\n", rtcData.counterIterations);        
         DBG("+++Temp: %d \r\n", rtcData.t);
         DBG("+++Hum: %d \r\n",rtcData.h);
         //         DBG("+++Light: %d\r\n", rtcData.p);

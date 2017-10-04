@@ -1,7 +1,8 @@
 #include "soil.h"
+#include "const.h"
+#include "mywire.h"
 
-
-#define DEVICE_ADDR 0x01
+#define DEVICE_ADDR 0x20
 
  //Soil Moisture Sensor Register Addresses
 #define SOIL_GET_CAPACITANCE 	0x00 // (r) 	2 bytes
@@ -17,7 +18,7 @@
 
 uint16_t ICACHE_FLASH_ATTR soilGetCap()
 {
-    readI2CRegister16bit(DEVICE_ADDR, SOIL_GET_CAPACITANCE);
+    readI2CRegister16bit(DEVICE_ADDR, SOIL_GET_CAPACITANCE);//throw away the data
         
     int status = 1;
     int counter = 0;
@@ -30,7 +31,7 @@ uint16_t ICACHE_FLASH_ATTR soilGetCap()
 
     if (counter > 1)
     {
-        //DBG("BusyC:%d", counter);
+        DBG("BusyC:%d", counter);
     }
 
     return readI2CRegister16bit(DEVICE_ADDR, SOIL_GET_CAPACITANCE);
@@ -60,4 +61,14 @@ bool ICACHE_FLASH_ATTR soilCheck()
 uint8_t ICACHE_FLASH_ATTR soilGetVersion()
 {
     return readI2CRegister8bit(DEVICE_ADDR, SOIL_GET_VERSION);
+}
+
+uint8_t ICACHE_FLASH_ATTR soilReset()
+{
+    writeI2CRegister8bit(DEVICE_ADDR, SOIL_RESET);
+    int i = 0;
+    for(;i < 100;i++)
+    {
+        os_delay_us(10000);//wait 1s
+    }
 }

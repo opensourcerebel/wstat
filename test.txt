@@ -1,0 +1,51 @@
++ python -m serial.tools.miniterm /dev/ttyUSB0 74880
+--- Miniterm on /dev/ttyUSB0  74880,8,N,1 ---
+--- Quit: Ctrl+] | Menu: Ctrl+T | Help: Ctrl+T followed by Ctrl+H ---
+
+ ets Jan  8 2013,rst cause:2, boot mode:(3,6)
+
+load 0x40100000, len 26876, room 16 
+tail 12
+chksum 0xa6
+ho 0 tail 12 room 4
+load 0x3ffe8000, len 900, room 12 
+tail 8
+chksum 0x17
+load 0x3ffe8390, len 1324, room 0 
+tail 12
+chksum 0x8a
+csum 0x8a
+rf cal sector: 1019
+freq trace enable 0
+rf[112] : 00
+rf[113] : 00
+rf[114] : 01
+
+SDK ver: 2.1.0(116b762) compiled @ May  5 2017 16:08:55
+phy ver: 1134_0, pp ver: 10.2
+
+mode : sta(60:01:94:0e:66:36)
+add if0
+Reset 5 time[5]
+disable dhcp 1
+Working mode 200
++++Coun: 850 
++++CounE: 2 
++++Temp: 231 
++++Hum: 330 
+e2eWe 19
+scandone
+del if0
+usl
+eException in thread rx:
+Traceback (most recent call last):
+  File "/usr/lib/python2.7/threading.py", line 801, in __bootstrap_inner
+    self.run()
+  File "/usr/lib/python2.7/threading.py", line 754, in run
+    self.__target(*self.__args, **self.__kwargs)
+  File "/home/xxx/.local/lib/python2.7/site-packages/serial/tools/miniterm.py", line 453, in reader
+    self.console.write(text)
+  File "/home/xxx/.local/lib/python2.7/site-packages/serial/tools/miniterm.py", line 68, in write
+    self.output.write(text)
+UnicodeEncodeError: 'ascii' codec can't encode character u'\u2400' in position 16: ordinal not in range(128)
+
