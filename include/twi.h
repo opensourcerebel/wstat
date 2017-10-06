@@ -9,8 +9,16 @@
 #define TWI_CLOCK_STRETCH_MULTIPLIER 6
 #define BUFFER_LENGTH 32
 
+#define SPECIAL           0xF8 //defaults to the usable BUSes uart0rx/tx uart1tx and hspi
+#define OUTPUT            0x01
 #define INPUT             0x00
 #define INPUT_PULLUP      0x02
+#define OUTPUT_OPEN_DRAIN 0x03
+#define FUNCTION_0        0x08
+#define FUNCTION_4        0x48
+#define WAKEUP_PULLDOWN   0x07
+#define WAKEUP_PULLUP     0x05
+#define INPUT_PULLDOWN_16 0x04 // PULLDOWN only possible for pin16
 
 #define ESP8266_REG(addr) *((volatile uint32_t *)(0x60000000+(addr)))
 extern uint8_t esp8266_gpioToFn[16];
@@ -21,6 +29,8 @@ extern uint8_t esp8266_gpioToFn[16];
 #define GPFFS1 5 //Function Select bit 1
 #define GPFFS2 8 //Function Select bit 2
 #define GPFFS(f) (((((f) & 4) != 0) << GPFFS2) | ((((f) & 2) != 0) << GPFFS1) | ((((f) & 1) != 0) << GPFFS0))
+#define GPFFS_BUS(p) (((p)==1||(p)==3)?0:((p)==2||(p)==12||(p)==13||(p)==14||(p)==15)?2:((p)==0)?4:1)
+#define GP16FFS(f) (((f) & 0x03) | (((f) & 0x04) << 4))
 
 #define GPFFS_GPIO(p) (((p)==0||(p)==2||(p)==4||(p)==5)?0:((p)==16)?1:3)
 #define GPEC   ESP8266_REG(0x314) //GPIO_ENABLE_CLR WO
@@ -29,6 +39,24 @@ extern uint8_t esp8266_gpioToFn[16];
 #define GPCD   2  //DRIVER 0:normal,1:open drain
 
 #define GPFPU  7 //Pullup
+#define GPFPD  6 //Pulldown
+
+//GPIO 16 PIN Function Register
+#define GP16F  ESP8266_REG(0x7A0)
+#define GPF16  GP16F
+
+//GPIO 16 PIN Control Register
+#define GP16C  ESP8266_REG(0x790)
+#define GPC16  GP16C
+
+#define GP16FPD  3 //Pulldown
+
+//GPIO 16 Control Registers
+#define GP16O  ESP8266_REG(0x768)
+#define GP16E  ESP8266_REG(0x774)
+#define GP16I  ESP8266_REG(0x78C)
+
+#define GPCWE  10 //WAKEUP_ENABLE (can be 1 only when INT_TYPE is high or low)
 
 #define GPEC   ESP8266_REG(0x314) //GPIO_ENABLE_CLR WO
 

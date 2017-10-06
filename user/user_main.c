@@ -6,7 +6,7 @@
 #include "espconn.h"
 #include "mem.h"
 #include "user_interface.h"
-#include "soil.h"
+#include "twi.h"
 
 
 static struct espconn nwconn;
@@ -420,6 +420,13 @@ LOCAL void ICACHE_FLASH_ATTR
 readDataActual()
 {   
     setupWire();
+    GPIO_12_LOW();//power up the sensor
+    uint32_t hiStateStart = system_get_time();
+    int i = 0;
+    for(;i < 14;i++)//13 is ok, let's give it 10 more millis just in case
+    {
+        os_delay_us(10000);//wait 1s
+    }
     if(resetReason == WAKE_FROM_DEEP_SLEEP)
     {
         if(rtcData.bmeInitOk)
@@ -437,22 +444,25 @@ readDataActual()
     {
         rtcData.h = soilGetCap();
         rtcData.t = soilGetTemp();
-        if(rtcData.h == 0 && rtcData.t == 0)
-        {
-            rtcData.p = rtcData.p + 1;
-            soilReset();
-            rtcData.h = soilGetCap();
-            rtcData.t = soilGetTemp();            
-        }
-        else
-        {
-            soilSleep();
-        }
+//         if(rtcData.h == 0 && rtcData.t == 0)
+//         {
+//             rtcData.p = rtcData.p + 1;
+//             soilReset();
+//             rtcData.h = soilGetCap();
+//             rtcData.t = soilGetTemp();            
+//         }
+//         else
+//         {
+//             soilSleep();
+//         }
+        GPIO_12_HIGH();//power down the sensor
+        uint32_t hiStateEnd = system_get_time();
 
         DBG("+++CounE: %d \r\n", rtcData.p);
         DBG("+++Coun: %d \r\n", rtcData.counterIterations);        
         DBG("+++Temp: %d \r\n", rtcData.t);
         DBG("+++Hum: %d \r\n",rtcData.h);
+        DBG("+++Time: %d \r\n", (hiStateEnd - hiStateStart));
         //         DBG("+++Light: %d\r\n", rtcData.p);
     }
     else
@@ -617,6 +627,9 @@ totalTimeLimit()
 void ICACHE_FLASH_ATTR
 user_init(void)
 {   
+    pinMode(GPIO_12, OUTPUT);
+    GPIO_12_HIGH();
+    
     wifi_set_event_handler_cb( wifi_callback );
     wakeup_start = system_get_time();    
     system_init_done_cb(system_operational);

@@ -1,10 +1,10 @@
  
-#define DEV_COMPILE
+#define PROD_COMPILE
 #define DEV_220
 //#define SLEEP_TIME 5000
 #define SLEEP_TIME_MIN 10 //MINIMUM SLEP TIME is 10 otherwise hangs
-//#define SLEEP_TIME 10800000000 //3h
-#define SLEEP_TIME 60000000
+#define SLEEP_TIME 10800000000 //3h
+//#define SLEEP_TIME 60000000
 
 
 //#define SEND_SECURE
@@ -104,5 +104,9 @@
 //6 Hardware reset Changed
 #define WAKE_FROM_DEEP_SLEEP 5
 #define HARDARE_RESET 6
+
+#define GPIO_12 12
+#define GPIO_12_HIGH()  (GPEC = (1 << GPIO_12))
+#define GPIO_12_LOW()   (GPES = (1 << GPIO_12))
 
 LOCAL void ICACHE_FLASH_ATTR readData();
