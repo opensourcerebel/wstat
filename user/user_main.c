@@ -421,11 +421,13 @@ readDataActual()
 {   
     setupWire();
     GPIO_12_LOW();//power up the sensor
+    pinMode(I2C_SCK_PIN, INPUT_PULLUP);
+    pinMode(I2C_SDA_PIN, INPUT_PULLUP);
     uint32_t hiStateStart = system_get_time();
     int i = 0;
-    for(;i < 14;i++)//13 is ok, let's give it 10 more millis just in case
+    for(;i < 25;i++)//wait 250 ms
     {
-        os_delay_us(10000);//wait 1s
+        os_delay_us(10000);//wait 10ms
     }
     if(resetReason == WAKE_FROM_DEEP_SLEEP)
     {
@@ -442,8 +444,9 @@ readDataActual()
     
     if(rtcData.bmeInitOk)
     {
-        rtcData.h = soilGetCap();
-        rtcData.t = soilGetTemp();
+        rtcData.h = soilGetCap_CUSTOM();
+        rtcData.t = 88;
+//        rtcData.t = soilGetTemp();
 //         if(rtcData.h == 0 && rtcData.t == 0)
 //         {
 //             rtcData.p = rtcData.p + 1;
@@ -455,6 +458,9 @@ readDataActual()
 //         {
 //             soilSleep();
 //         }
+        soilMeasure();
+        pinMode(I2C_SCK_PIN, INPUT);
+        pinMode(I2C_SDA_PIN, INPUT);
         GPIO_12_HIGH();//power down the sensor
         uint32_t hiStateEnd = system_get_time();
 

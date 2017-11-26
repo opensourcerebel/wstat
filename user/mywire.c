@@ -12,7 +12,7 @@ void ICACHE_FLASH_ATTR writeI2CRegister8bit(int addr, int value) {
   int stat = endTransmission();
   if (stat != 0)
   {
-    DBG("write:%d, %d, %d\r\n", addr, value, stat);
+    DBG("writeStatE:%d, %d, %d\r\n", addr, value, stat);
   }
 }
 
@@ -37,7 +37,7 @@ unsigned int ICACHE_FLASH_ATTR readI2CRegister16bit(int addr, int reg) {
 
   if (stat != 0)
   {
-    DBG("read2:%d, %d, %d\r\n", addr, reg, stat);
+    DBG("read16StatE:%d, %d, %d\r\n", addr, reg, stat);
   }
 
   requestFrom(addr, 2);

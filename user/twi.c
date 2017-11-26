@@ -32,7 +32,7 @@ void ICACHE_FLASH_ATTR twi_init(uint8_t sda, uint8_t scl)
   pinMode(twi_sda, INPUT);
   pinMode(twi_scl, INPUT);
   twi_setClock(100000);
-  twi_setClockStretchLimit(2500); // default value is 230 uS
+  twi_setClockStretchLimit(9000); // default value is 230 uS
   ETS_GPIO_INTR_ENABLE();
 }
 

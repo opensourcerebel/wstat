@@ -15,6 +15,7 @@
 #define SOIL_GET_VERSION 	0x07 //	(r) 	1 bytes
 #define SOIL_SLEEP	        0x08 // (w)     n/a
 #define SOIL_GET_BUSY	        0x09 // (r)	    1 bytes
+#define SOIL_MEASURE_CAP        0x11 // (r)	    1 bytes
 
 uint16_t ICACHE_FLASH_ATTR soilGetCap()
 {
@@ -37,6 +38,11 @@ uint16_t ICACHE_FLASH_ATTR soilGetCap()
     return readI2CRegister16bit(DEVICE_ADDR, SOIL_GET_CAPACITANCE);
 }
 
+uint16_t ICACHE_FLASH_ATTR soilGetCap_CUSTOM()
+{
+   return readI2CRegister16bit(DEVICE_ADDR, SOIL_GET_CAPACITANCE);
+}
+
 uint16_t ICACHE_FLASH_ATTR soilGetTemp()
 {
    return readI2CRegister16bit(DEVICE_ADDR, SOIL_GET_TEMPERATURE);
@@ -45,6 +51,11 @@ uint16_t ICACHE_FLASH_ATTR soilGetTemp()
 void ICACHE_FLASH_ATTR soilSleep()
 {
     writeI2CRegister8bit(DEVICE_ADDR, SOIL_SLEEP); //sleep
+}
+
+void ICACHE_FLASH_ATTR soilMeasure()
+{
+    writeI2CRegister8bit(DEVICE_ADDR, SOIL_MEASURE_CAP);
 }
 
 bool ICACHE_FLASH_ATTR soilCheck()

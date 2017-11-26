@@ -1,6 +1,6 @@
  
-#define PROD_COMPILE
-#define DEV_220
+#define DEV_COMPILE
+#define DEV_210
 //#define SLEEP_TIME 5000
 #define SLEEP_TIME_MIN 10 //MINIMUM SLEP TIME is 10 otherwise hangs
 #define SLEEP_TIME 10800000000 //3h

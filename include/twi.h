@@ -3,8 +3,9 @@
 #include "osapi.h"
 #include "gpio.h"
 
-#define I2C_SCK_PIN 5
 #define I2C_SDA_PIN 4
+#define I2C_SCK_PIN 5
+
 
 #define TWI_CLOCK_STRETCH_MULTIPLIER 6
 #define BUFFER_LENGTH 32
