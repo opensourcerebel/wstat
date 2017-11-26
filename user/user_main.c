@@ -458,7 +458,7 @@ readDataActual()
 //         {
 //             soilSleep();
 //         }
-        soilMeasure();
+        //soilMeasure();
         pinMode(I2C_SCK_PIN, INPUT);
         pinMode(I2C_SDA_PIN, INPUT);
         GPIO_12_HIGH();//power down the sensor
