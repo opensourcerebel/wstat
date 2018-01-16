@@ -1,9 +1,11 @@
  
-#define DEV_COMPILE
+#define PROD_COMPILE
 #define DEV_210
+#define IP_3 89
+
 //#define SLEEP_TIME 5000
 #define SLEEP_TIME_MIN 10 //MINIMUM SLEP TIME is 10 otherwise hangs
-#define SLEEP_TIME 10800000000 //3h
+#define SLEEP_TIME SLEEP_TIME_MIN //3h
 //#define SLEEP_TIME 60000000
 
 
@@ -22,8 +24,6 @@
 #define START_TOTAL_TIME_LIMIT
 #endif
 
-
-#define IP_3 1
 
 #ifdef DEV_152
 #define IP_SUFFIX 152 
@@ -53,6 +53,24 @@
 #define IP_SUFFIX 234
 #define FILE_RESULTS "results234.txt"
 #define CORRECTION -142//3328 2751
+#endif
+
+#ifdef DEV_235
+#define IP_SUFFIX 235
+#define FILE_RESULTS "results235.txt"
+#define CORRECTION -180//3328 3512
+#endif
+
+#ifdef DEV_236
+#define IP_SUFFIX 236
+#define FILE_RESULTS "results236.txt"
+#define CORRECTION -173//3328 3512
+#endif
+
+#ifdef DEV_237
+#define IP_SUFFIX 237
+#define FILE_RESULTS "results237.txt"
+#define CORRECTION -104//3328
 #endif
 
 #define DO_NOT_REPEAT_T 0
