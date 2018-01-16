@@ -1,9 +1,10 @@
  
 #define PROD_COMPILE
 #define DEV_152
+#define IP_3 89
 //#define SLEEP_TIME 5000
 #define SLEEP_TIME_MIN 10 //MINIMUM SLEP TIME is 10 otherwise hangs
-#define SLEEP_TIME 60000
+#define SLEEP_TIME SLEEP_TIME_MIN
 
 
 //#define SEND_SECURE
@@ -21,8 +22,6 @@
 #define START_TOTAL_TIME_LIMIT
 #endif
 
-
-#define IP_3 1
 
 #ifdef DEV_152
 #define IP_SUFFIX 152 
