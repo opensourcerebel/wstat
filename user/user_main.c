@@ -108,6 +108,7 @@ static void uart_ignore_char(char c)
 void ICACHE_FLASH_ATTR
 user_rf_pre_init(void)
 {
+	wifi_set_phy_mode (PHY_MODE_11N);
     struct rst_info *rtc_info = system_get_rst_info();
     resetReason = rtc_info->reason;
     
@@ -243,11 +244,11 @@ nw_connect_cb(void *arg)
     espconn_regist_recvcb(p_nwconn, nw_recv_cb);
     espconn_regist_sentcb(p_nwconn, nw_sent_cb);
     uint16_t voltage = system_get_vdd33() + CORRECTION;
-    DBG("volt%d\n", voltage);
+    DBG("volt[%d]\n", voltage);
     
-    os_sprintf( url, "/iot/gate?file=%s&1=%d&2=%d&3=%d&4=%d&5=%d&6=%d&7=%d&8=%d&9=%d&10=%d&11=%d&12=%d&13=%d", 
+    os_sprintf( url, "/iot/gate?file=%s&1=%d&2=%d&3=%d&4=%d&5=%d&6=%d&7=%d&8=%d&9=%d&10=%d&11=%d&12=%d&13=%d&14=%d",
                 FILE_RESULTS, rtcData.t, rtcData.h, rtcData.p, voltage, wifiConnectionDuration, rtcData.weatherReadingDuration, rtcData.previousSendDuration,
-                rtcData.previousTotalDuration, rtcData.previousDisconnectDuration, rtcData.counterIterations, rtcData.counterCancelledIterations, rtcData.originalResetReason, resetReason);    
+                rtcData.previousTotalDuration, rtcData.previousDisconnectDuration, rtcData.counterIterations, rtcData.counterCancelledIterations, rtcData.originalResetReason, resetReason, wifi_station_get_rssi());
     
     os_sprintf( data, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Type: text/html\r\nContent-Length: %d\r\n\r\n%s", url, HOST_NAME, os_strlen( "" ), "" );
                 
@@ -290,6 +291,7 @@ actualSleepAfterSend()
     DBG_TIME("e2eWiDisc+Write %d ms\n", currentDisconnectDuration/1000);
     DBG_TIME("e2eWiTot %d ms\n", currentTotalDuration/1000);
     DBG_TIME("e2eWiWrite %d us\n", wakup_end2 - wakup_end);
+    DBG("Rssi[%d]\n", wifi_station_get_rssi());
     
     deep_sleep_set_option( WAKE_WITHOUT_WIFI );
     uint64 desiredSleep = SLEEP_TIME * 1000;
