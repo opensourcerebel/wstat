@@ -3,3 +3,5 @@
 driver/.output/
 include/pass_router.h
 user/.output/
+.cproject
+.project
